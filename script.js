@@ -142,17 +142,17 @@ document.getElementById('shareButton').addEventListener('click', () => {
 
     const thoughtText = document.getElementById('thoughtText').textContent;
     
-    // Текст для поста
+    // Текст для публикации (можно добавить ссылку на приложение)
     const shareText = `${thoughtText}\n\n😄 Узнай, о чем думает твой питомец каждый день!`;
-
-    // Используем VK Bridge для открытия окна публикации
-    bridge.send('VKWebAppShowWallPostBox', {
-        message: shareText,
-        attachments: '' // Можно добавить ссылку на приложение или картинку
+    
+    // Используем VKWebAppShare (работает везде)
+    bridge.send('VKWebAppShare', {
+        link: 'https://vk.com/app<ID_вашего_приложения>', // Замените <ID> на реальный ID приложения
+        message: shareText
     }).catch((error) => {
-        console.error('Ошибка при открытии окна поста:', error);
-        // Fallback на случай, если VK Bridge не сработал (например, в браузере)
-        alert('Поделиться не удалось. Но вот твоя мысль: ' + thoughtText);
+        console.error('Ошибка при открытии окна шаринга:', error);
+        // Если и этот метод не сработал — показываем alert
+        alert('Не удалось открыть окно шаринга. Но вот твоя мысль: ' + thoughtText);
     });
 });
 
