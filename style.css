@@ -1,0 +1,226 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.app-container {
+    max-width: 400px;
+    width: 100%;
+    min-height: 600px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 30px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    position: relative;
+    margin: 20px;
+}
+
+/* Экран загрузки */
+.loading-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 600px;
+}
+
+.loader {
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #764ba2;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Экран профиля */
+.profile-screen {
+    padding: 40px 25px;
+    height: 600px;
+    display: flex;
+    flex-direction: column;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.input-group {
+    margin-bottom: 25px;
+}
+
+.input-group label {
+    display: block;
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.input-group input,
+.input-group select {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 15px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+    background: white;
+}
+
+.input-group input:focus,
+.input-group select:focus {
+    outline: none;
+    border-color: #764ba2;
+}
+
+.vk-button {
+    background: #0077ff;
+    color: white;
+    border: none;
+    padding: 16px;
+    border-radius: 15px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s, transform 0.1s;
+    margin-top: 20px;
+    width: 100%;
+}
+
+.vk-button:hover {
+    background: #0066cc;
+}
+
+.vk-button:active {
+    transform: scale(0.98);
+}
+
+.disclaimer {
+    text-align: center;
+    color: #999;
+    font-size: 14px;
+    margin-top: 30px;
+}
+
+/* Главный экран */
+.main-screen {
+    padding: 25px;
+    height: 600px;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.pet-info {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    background: #f0f0f0;
+    padding: 10px 20px;
+    border-radius: 30px;
+}
+
+.edit-profile-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 50%;
+    transition: background 0.3s;
+}
+
+.edit-profile-btn:hover {
+    background: #f0f0f0;
+}
+
+.thought-card {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.thought-bubble {
+    background: white;
+    padding: 30px;
+    border-radius: 40px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    font-size: 18px;
+    line-height: 1.6;
+    color: #333;
+    position: relative;
+    border: 2px solid #764ba2;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    text-align: center;
+    word-break: break-word;
+}
+
+.thought-bubble::before {
+    content: '';
+    position: absolute;
+    bottom: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 30px;
+    background: white;
+    border-right: 2px solid #764ba2;
+    border-bottom: 2px solid #764ba2;
+    border-radius: 0 0 30px 0;
+    rotate: 45deg;
+}
+
+.actions {
+    margin-top: auto;
+}
+
+.share-button {
+    background: #4CAF50;
+}
+
+.share-button:hover {
+    background: #45a049;
+}
+
+.update-note {
+    text-align: center;
+    color: #999;
+    font-size: 12px;
+    margin-top: 15px;
+}
