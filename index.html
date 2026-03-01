@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Мысли питомца</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Подключаем VK Bridge для работы с API ВКонтакте -->
     <script src="https://unpkg.com/@vkontakte/vk-bridge@2.15.0/dist/browser.min.js"></script>
 </head>
 <body>
@@ -13,10 +12,10 @@
         <!-- Экран загрузки -->
         <div class="loading-screen" id="loadingScreen">
             <div class="loader"></div>
-            <p>Загружаем мысли...</p>
+            <p>Загружаем...</p>
         </div>
 
-        <!-- Экран создания профиля (показывается, если нет данных) -->
+        <!-- Экран создания профиля -->
         <div class="profile-screen hidden" id="profileScreen">
             <h1 class="title">🫵 Кто тут у нас?</h1>
             <div class="input-group">
@@ -36,30 +35,43 @@
                     <option value="Другой">❓ Другой</option>
                 </select>
             </div>
-            <button class="vk-button" id="saveProfileBtn">Сохранить и узнать мысли</button>
-            <p class="disclaimer">Каждый день — новая мысль ✨</p>
+            <button class="vk-button" id="saveProfileBtn">Сохранить и продолжить</button>
         </div>
 
-        <!-- Главный экран с мыслью дня -->
-        <div class="main-screen hidden" id="mainScreen">
+        <!-- Основной интерфейс (после создания профиля) -->
+        <div class="main-interface hidden" id="mainInterface">
+            <!-- Шапка с именем питомца и кнопкой смены профиля -->
             <div class="header">
-                <div class="pet-info" id="petInfoDisplay">
-                    <!-- Сюда подставится имя и тип -->
-                </div>
+                <div class="pet-info" id="petInfoDisplay"></div>
                 <button class="edit-profile-btn" id="editProfileBtn" title="Сменить питомца">✏️</button>
             </div>
 
-            <div class="thought-card" id="thoughtCard">
-                <div class="thought-bubble" id="thoughtText">
-                    <!-- Здесь будет мысль -->
+            <!-- Табы -->
+            <div class="tabs">
+                <button class="tab-btn active" id="tabThoughts">💭 Мысли</button>
+                <button class="tab-btn" id="tabChat">💬 Чат с Мафией</button>
+            </div>
+
+            <!-- Контент таба "Мысли" -->
+            <div class="tab-content active" id="thoughtsTab">
+                <div class="thought-card">
+                    <div class="thought-bubble" id="thoughtText"></div>
+                </div>
+                <div class="actions">
+                    <button class="vk-button share-button" id="shareButton">Поделиться мыслью 📤</button>
+                    <p class="update-note" id="updateNote"></p>
                 </div>
             </div>
 
-            <div class="actions">
-                <button class="vk-button share-button" id="shareButton">
-                    Поделиться мыслью 📤
-                </button>
-                <p class="update-note" id="updateNote"></p>
+            <!-- Контент таба "Чат" -->
+            <div class="tab-content" id="chatTab">
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Сюда будут добавляться сообщения -->
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chatInput" placeholder="Спроси Мафию..." maxlength="200">
+                    <button class="vk-button send-btn" id="sendChatBtn">➤</button>
+                </div>
             </div>
         </div>
     </div>
