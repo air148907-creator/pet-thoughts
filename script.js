@@ -3,9 +3,9 @@ const bridge = window.vkBridge;
 bridge.send('VKWebAppInit');
 
 // ==================== КОНСТАНТЫ ====================
-const APP_ID = 54466618;                     // ID вашего приложения
-const MISTRAL_API_KEY = 'vWQanTkEq24uYCa6uaD73NSK6oD4ioh6'; // ⚠️ Ваш ключ (скройте на сервере в проде)
-const MISTRAL_MODEL = 'mistral-tiny';        // Можно использовать mistral-small, mistral-medium
+const APP_ID = 54466618; // ВАШ ID ПРИЛОЖЕНИЯ
+const MISTRAL_API_KEY = 'vWQanTkEq24uYCa6uaD73NSK6oD4ioh6'; // Ваш ключ
+const MISTRAL_MODEL = 'mistral-tiny';
 
 const thoughtsDB = [
     "Сегодня я буду игнорировать тебя ровно до 18:00, потом приду проситься на ручки. Это закон.",
@@ -32,7 +32,7 @@ const thoughtsDB = [
 
 const STORAGE_KEY = 'petProfile';
 const THOUGHT_KEY = 'lastThought';
-const CHAT_HISTORY_KEY = 'chatHistory';      // Для сохранения истории чата
+const CHAT_HISTORY_KEY = 'chatHistory';
 
 // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 function getTodayDateString() {
@@ -61,7 +61,7 @@ function loadProfile() {
     return profile ? JSON.parse(profile) : null;
 }
 
-// ==================== ГЕНЕРАЦИЯ КАРТИНКИ (как в прошлой версии) ====================
+// ==================== ГЕНЕРАЦИЯ КАРТИНКИ ====================
 function generateThoughtImage(thought, petName, petType) {
     return new Promise((resolve) => {
         const canvas = document.createElement('canvas');
@@ -140,7 +140,7 @@ CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
     return this;
 };
 
-// ==================== ФУНКЦИИ ЗАГРУЗКИ ФОТО В ВК (без изменений) ====================
+// ==================== ФУНКЦИИ ЗАГРУЗКИ ФОТО В ВК ====================
 async function getWallUploadServer() {
     const result = await bridge.send('VKWebAppCallAPIMethod', {
         method: 'photos.getWallUploadServer',
@@ -172,18 +172,15 @@ async function uploadWallPhoto(blob) {
 }
 
 // ==================== ФУНКЦИИ ЧАТА ====================
-// Загружаем историю чата из localStorage
 function loadChatHistory() {
     const history = localStorage.getItem(CHAT_HISTORY_KEY);
     return history ? JSON.parse(history) : [];
 }
 
-// Сохраняем историю чата
 function saveChatHistory(messages) {
     localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages));
 }
 
-// Добавляем сообщение в историю и обновляем UI
 function addChatMessage(role, content) {
     const messages = loadChatHistory();
     messages.push({ role, content, timestamp: Date.now() });
@@ -191,15 +188,9 @@ function addChatMessage(role, content) {
     renderChatMessages();
 }
 
-// Очищаем историю (если нужно)
-function clearChatHistory() {
-    localStorage.removeItem(CHAT_HISTORY_KEY);
-    renderChatMessages();
-}
-
-// Отображаем сообщения в окне чата
 function renderChatMessages() {
     const container = document.getElementById('chatMessages');
+    if (!container) return;
     const messages = loadChatHistory();
     container.innerHTML = '';
     messages.forEach(msg => {
@@ -208,21 +199,16 @@ function renderChatMessages() {
         div.textContent = msg.content;
         container.appendChild(div);
     });
-    // Прокрутка вниз
     container.scrollTop = container.scrollHeight;
 }
 
-// Отправка сообщения в Mistral AI
 async function sendToMistral(userMessage) {
     const profile = loadProfile();
     if (!profile) return null;
 
-    // Системный промпт с учётом типа питомца
     const systemPrompt = `Ты — Мафия, ${profile.petType} (питомец). Ты отвечаешь коротко, весело, с юмором, от первого лица. Используй имя хозяина: "${profile.petName}". Пиши как забавный питомец, который немного очеловечен. Не используй markdown, просто текст.`;
 
-    // Загружаем последние несколько сообщений для контекста (чтобы не превысить лимит токенов)
     const history = loadChatHistory();
-    // Берем последние 6 сообщений (3 пары) для контекста
     const recent = history.slice(-6);
 
     const messages = [
@@ -260,18 +246,15 @@ async function sendToMistral(userMessage) {
     }
 }
 
-// Обработчик отправки сообщения из чата
 async function handleChatSend() {
     const input = document.getElementById('chatInput');
+    if (!input) return;
     const text = input.value.trim();
     if (!text) return;
 
     input.value = '';
     addChatMessage('user', text);
 
-    // Показываем индикатор набора (можно просто добавить сообщение-заглушку)
-    const typingMsg = { role: 'assistant', content: '...' };
-    // Но лучше показать через временное сообщение
     const container = document.getElementById('chatMessages');
     const typingDiv = document.createElement('div');
     typingDiv.className = 'chat-message assistant typing';
@@ -279,12 +262,10 @@ async function handleChatSend() {
     container.appendChild(typingDiv);
 
     const reply = await sendToMistral(text);
+    container.removeChild(typingDiv);
     if (reply) {
-        // Удаляем "печатает"
-        container.removeChild(typingDiv);
         addChatMessage('assistant', reply);
     } else {
-        container.removeChild(typingDiv);
         addChatMessage('assistant', 'Мяу... что-то пошло не так. Попробуй позже.');
     }
 }
@@ -310,7 +291,6 @@ function updateUIBasedOnProfile() {
 
         petInfoDisplay.textContent = `${profile.petType} ${profile.petName}`;
 
-        // Мысль дня
         const thoughtIndex = getThoughtIndexForToday(profile.petName, profile.petType);
         const thought = thoughtsDB[thoughtIndex];
         thoughtText.textContent = `${profile.petName}: ${thought}`;
@@ -325,7 +305,6 @@ function updateUIBasedOnProfile() {
         }
         localStorage.setItem(THOUGHT_KEY, JSON.stringify({ date: today, thought }));
 
-        // Рендерим историю чата (если есть)
         renderChatMessages();
     }
 }
@@ -337,6 +316,8 @@ function switchTab(tabName) {
     const thoughtsTab = document.getElementById('thoughtsTab');
     const chatTab = document.getElementById('chatTab');
 
+    if (!tabThoughts || !tabChat || !thoughtsTab || !chatTab) return;
+
     if (tabName === 'thoughts') {
         tabThoughts.classList.add('active');
         tabChat.classList.remove('active');
@@ -347,7 +328,6 @@ function switchTab(tabName) {
         tabChat.classList.add('active');
         thoughtsTab.classList.remove('active');
         chatTab.classList.add('active');
-        // При переключении на чат можно обновить сообщения
         renderChatMessages();
     }
 }
@@ -360,10 +340,10 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUIBasedOnProfile();
     }, 500);
 
-    // Кнопка сохранения профиля
-    document.getElementById('saveProfileBtn').addEventListener('click', () => {
-        const petName = document.getElementById('petName').value.trim();
-        const petType = document.getElementById('petType').value;
+    // Сохранение профиля
+    document.getElementById('saveProfileBtn')?.addEventListener('click', () => {
+        const petName = document.getElementById('petName')?.value.trim();
+        const petType = document.getElementById('petType')?.value;
         if (!petName) {
             alert('Введите имя питомца');
             return;
@@ -372,24 +352,27 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUIBasedOnProfile();
     });
 
-    // Кнопка смены профиля
-    document.getElementById('editProfileBtn').addEventListener('click', () => {
+    // Смена профиля
+    document.getElementById('editProfileBtn')?.addEventListener('click', () => {
         localStorage.removeItem(STORAGE_KEY);
-        document.getElementById('petName').value = '';
-        document.getElementById('petType').value = 'Кот';
+        const nameInput = document.getElementById('petName');
+        const typeSelect = document.getElementById('petType');
+        if (nameInput) nameInput.value = '';
+        if (typeSelect) typeSelect.value = 'Кот';
         updateUIBasedOnProfile();
     });
 
     // Табы
-    document.getElementById('tabThoughts').addEventListener('click', () => switchTab('thoughts'));
-    document.getElementById('tabChat').addEventListener('click', () => switchTab('chat'));
+    document.getElementById('tabThoughts')?.addEventListener('click', () => switchTab('thoughts'));
+    document.getElementById('tabChat')?.addEventListener('click', () => switchTab('chat'));
 
-    // Поделиться мыслью
-    document.getElementById('shareButton').addEventListener('click', async () => {
+    // Поделиться
+    document.getElementById('shareButton')?.addEventListener('click', async () => {
         const profile = loadProfile();
         if (!profile) return;
 
         const thoughtElement = document.getElementById('thoughtText');
+        if (!thoughtElement) return;
         const thoughtText = thoughtElement.textContent;
 
         const imageBlob = await generateThoughtImage(thoughtText, profile.petName, profile.petType);
@@ -422,9 +405,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Отправка сообщения в чате
-    document.getElementById('sendChatBtn').addEventListener('click', handleChatSend);
-    document.getElementById('chatInput').addEventListener('keypress', (e) => {
+    // Отправка чата
+    document.getElementById('sendChatBtn')?.addEventListener('click', handleChatSend);
+    document.getElementById('chatInput')?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleChatSend();
     });
 });
