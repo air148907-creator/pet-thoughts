@@ -216,12 +216,11 @@ async function sendToMistral(userMessage) {
     ];
 
     try {
-        // Отправляем запрос на свой Cloudflare Worker
         // ⚠️ ЗАМЕНИТЕ URL НА АДРЕС ВАШЕГО WORKER
         const response = await fetch('https://sparkling-violet-2bcf.air148907.workers.dev/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages })
+            body: JSON.stringify({ messages }) // отправляем объект с полем messages
         });
 
         if (!response.ok) {
