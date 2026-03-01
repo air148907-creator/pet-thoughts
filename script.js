@@ -2,7 +2,11 @@
 const bridge = window.vkBridge;
 bridge.send('VKWebAppInit');
 
-// ==================== БАЗА ФРАЗ ====================
+// ==================== КОНСТАНТЫ ====================
+const APP_ID = 54466618;                     // ID вашего приложения
+const MISTRAL_API_KEY = 'vWQanTkEq24uYCa6uaD73NSK6oD4ioh6'; // ⚠️ Ваш ключ (скройте на сервере в проде)
+const MISTRAL_MODEL = 'mistral-tiny';        // Можно использовать mistral-small, mistral-medium
+
 const thoughtsDB = [
     "Сегодня я буду игнорировать тебя ровно до 18:00, потом приду проситься на ручки. Это закон.",
     "Я слышал, как ты открывал(а) холодильник. Жду отчётности в виде вкусняшки.",
@@ -26,12 +30,9 @@ const thoughtsDB = [
     "Тот желтый банан на столе выглядит подозрительно. Я его изучу, когда ты отвернешься."
 ];
 
-// Ключи для localStorage
 const STORAGE_KEY = 'petProfile';
 const THOUGHT_KEY = 'lastThought';
-
-// ⚠️ ВСТАВЬТЕ СЮДА РЕАЛЬНЫЙ ID ВАШЕГО ПРИЛОЖЕНИЯ (число)
-const APP_ID = 54466618; // Например: 8123456
+const CHAT_HISTORY_KEY = 'chatHistory';      // Для сохранения истории чата
 
 // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 function getTodayDateString() {
@@ -60,7 +61,7 @@ function loadProfile() {
     return profile ? JSON.parse(profile) : null;
 }
 
-// ==================== ГЕНЕРАЦИЯ КАРТИНКИ ====================
+// ==================== ГЕНЕРАЦИЯ КАРТИНКИ (как в прошлой версии) ====================
 function generateThoughtImage(thought, petName, petType) {
     return new Promise((resolve) => {
         const canvas = document.createElement('canvas');
@@ -68,14 +69,12 @@ function generateThoughtImage(thought, petName, petType) {
         canvas.height = 800;
         const ctx = canvas.getContext('2d');
 
-        // Градиентный фон
         const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
         gradient.addColorStop(0, '#667eea');
         gradient.addColorStop(1, '#764ba2');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Белая карточка для текста
         ctx.fillStyle = 'white';
         ctx.shadowColor = 'rgba(0,0,0,0.3)';
         ctx.shadowBlur = 20;
@@ -86,13 +85,11 @@ function generateThoughtImage(thought, petName, petType) {
         ctx.fill();
         ctx.shadowColor = 'transparent';
 
-        // Текст мысли (центрированный)
         ctx.fillStyle = '#333';
         ctx.font = 'bold 36px "Arial", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        // Перенос строк
         const maxWidth = 550;
         const words = thought.split(' ');
         let lines = [];
@@ -116,12 +113,10 @@ function generateThoughtImage(thought, petName, petType) {
             y += 50;
         });
 
-        // Подпись: — Тип Имя
         ctx.font = '28px "Arial", sans-serif';
         ctx.fillStyle = '#555';
         ctx.fillText(`— ${petType} ${petName}`, canvas.width / 2, 600);
 
-        // Ссылка на приложение (нижний колонтитул)
         ctx.font = '24px "Arial", sans-serif';
         ctx.fillStyle = '#999';
         ctx.fillText(`vk.com/app${APP_ID}`, canvas.width / 2, 700);
@@ -130,7 +125,6 @@ function generateThoughtImage(thought, petName, petType) {
     });
 }
 
-// Вспомогательная функция для roundRect
 CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
     if (w < 2 * r) r = w / 2;
     if (h < 2 * r) r = h / 2;
@@ -146,7 +140,7 @@ CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
     return this;
 };
 
-// ==================== ЗАГРУЗКА ФОТО В ВК ====================
+// ==================== ФУНКЦИИ ЗАГРУЗКИ ФОТО В ВК (без изменений) ====================
 async function getWallUploadServer() {
     const result = await bridge.send('VKWebAppCallAPIMethod', {
         method: 'photos.getWallUploadServer',
@@ -158,23 +152,14 @@ async function getWallUploadServer() {
 async function uploadPhotoToServer(uploadUrl, blob) {
     const formData = new FormData();
     formData.append('photo', blob, 'thought.png');
-
-    const response = await fetch(uploadUrl, {
-        method: 'POST',
-        body: formData
-    });
+    const response = await fetch(uploadUrl, { method: 'POST', body: formData });
     return response.json();
 }
 
 async function saveWallPhoto(server, photo, hash) {
     const result = await bridge.send('VKWebAppCallAPIMethod', {
         method: 'photos.saveWallPhoto',
-        params: {
-            server: server,
-            photo: photo,
-            hash: hash,
-            v: '5.131'
-        }
+        params: { server, photo, hash, v: '5.131' }
     });
     const saved = result.response[0];
     return `photo${saved.owner_id}_${saved.id}`;
@@ -183,8 +168,125 @@ async function saveWallPhoto(server, photo, hash) {
 async function uploadWallPhoto(blob) {
     const uploadUrl = await getWallUploadServer();
     const uploadResult = await uploadPhotoToServer(uploadUrl, blob);
-    const attachment = await saveWallPhoto(uploadResult.server, uploadResult.photo, uploadResult.hash);
-    return attachment;
+    return await saveWallPhoto(uploadResult.server, uploadResult.photo, uploadResult.hash);
+}
+
+// ==================== ФУНКЦИИ ЧАТА ====================
+// Загружаем историю чата из localStorage
+function loadChatHistory() {
+    const history = localStorage.getItem(CHAT_HISTORY_KEY);
+    return history ? JSON.parse(history) : [];
+}
+
+// Сохраняем историю чата
+function saveChatHistory(messages) {
+    localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages));
+}
+
+// Добавляем сообщение в историю и обновляем UI
+function addChatMessage(role, content) {
+    const messages = loadChatHistory();
+    messages.push({ role, content, timestamp: Date.now() });
+    saveChatHistory(messages);
+    renderChatMessages();
+}
+
+// Очищаем историю (если нужно)
+function clearChatHistory() {
+    localStorage.removeItem(CHAT_HISTORY_KEY);
+    renderChatMessages();
+}
+
+// Отображаем сообщения в окне чата
+function renderChatMessages() {
+    const container = document.getElementById('chatMessages');
+    const messages = loadChatHistory();
+    container.innerHTML = '';
+    messages.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = `chat-message ${msg.role}`;
+        div.textContent = msg.content;
+        container.appendChild(div);
+    });
+    // Прокрутка вниз
+    container.scrollTop = container.scrollHeight;
+}
+
+// Отправка сообщения в Mistral AI
+async function sendToMistral(userMessage) {
+    const profile = loadProfile();
+    if (!profile) return null;
+
+    // Системный промпт с учётом типа питомца
+    const systemPrompt = `Ты — Мафия, ${profile.petType} (питомец). Ты отвечаешь коротко, весело, с юмором, от первого лица. Используй имя хозяина: "${profile.petName}". Пиши как забавный питомец, который немного очеловечен. Не используй markdown, просто текст.`;
+
+    // Загружаем последние несколько сообщений для контекста (чтобы не превысить лимит токенов)
+    const history = loadChatHistory();
+    // Берем последние 6 сообщений (3 пары) для контекста
+    const recent = history.slice(-6);
+
+    const messages = [
+        { role: 'system', content: systemPrompt },
+        ...recent.map(m => ({ role: m.role, content: m.content })),
+        { role: 'user', content: userMessage }
+    ];
+
+    try {
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${MISTRAL_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: MISTRAL_MODEL,
+                messages: messages,
+                temperature: 0.8,
+                max_tokens: 150
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.text();
+            console.error('Mistral API error:', errorData);
+            return null;
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content.trim();
+    } catch (error) {
+        console.error('Ошибка при вызове Mistral AI:', error);
+        return null;
+    }
+}
+
+// Обработчик отправки сообщения из чата
+async function handleChatSend() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    input.value = '';
+    addChatMessage('user', text);
+
+    // Показываем индикатор набора (можно просто добавить сообщение-заглушку)
+    const typingMsg = { role: 'assistant', content: '...' };
+    // Но лучше показать через временное сообщение
+    const container = document.getElementById('chatMessages');
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'chat-message assistant typing';
+    typingDiv.textContent = 'Мафия печатает...';
+    container.appendChild(typingDiv);
+
+    const reply = await sendToMistral(text);
+    if (reply) {
+        // Удаляем "печатает"
+        container.removeChild(typingDiv);
+        addChatMessage('assistant', reply);
+    } else {
+        container.removeChild(typingDiv);
+        addChatMessage('assistant', 'Мяу... что-то пошло не так. Попробуй позже.');
+    }
 }
 
 // ==================== ОБНОВЛЕНИЕ ИНТЕРФЕЙСА ====================
@@ -192,7 +294,7 @@ function updateUIBasedOnProfile() {
     const profile = loadProfile();
     const loadingScreen = document.getElementById('loadingScreen');
     const profileScreen = document.getElementById('profileScreen');
-    const mainScreen = document.getElementById('mainScreen');
+    const mainInterface = document.getElementById('mainInterface');
     const petInfoDisplay = document.getElementById('petInfoDisplay');
     const thoughtText = document.getElementById('thoughtText');
     const updateNote = document.getElementById('updateNote');
@@ -200,109 +302,129 @@ function updateUIBasedOnProfile() {
     if (!profile) {
         loadingScreen.classList.add('hidden');
         profileScreen.classList.remove('hidden');
-        mainScreen.classList.add('hidden');
+        mainInterface.classList.add('hidden');
     } else {
         loadingScreen.classList.add('hidden');
         profileScreen.classList.add('hidden');
-        mainScreen.classList.remove('hidden');
+        mainInterface.classList.remove('hidden');
 
         petInfoDisplay.textContent = `${profile.petType} ${profile.petName}`;
 
+        // Мысль дня
         const thoughtIndex = getThoughtIndexForToday(profile.petName, profile.petType);
         const thought = thoughtsDB[thoughtIndex];
         thoughtText.textContent = `${profile.petName}: ${thought}`;
 
         const lastThoughtData = localStorage.getItem(THOUGHT_KEY);
         const today = getTodayDateString();
-
         if (lastThoughtData) {
             const lastData = JSON.parse(lastThoughtData);
             updateNote.textContent = (lastData.date === today) ? 'Мысль на сегодня (уже смотрели)' : 'Сегодня новая мысль! ✨';
         } else {
             updateNote.textContent = 'Сегодня новая мысль! ✨';
         }
+        localStorage.setItem(THOUGHT_KEY, JSON.stringify({ date: today, thought }));
 
-        localStorage.setItem(THOUGHT_KEY, JSON.stringify({ date: today, thought: thought }));
+        // Рендерим историю чата (если есть)
+        renderChatMessages();
+    }
+}
+
+// ==================== УПРАВЛЕНИЕ ТАБАМИ ====================
+function switchTab(tabName) {
+    const tabThoughts = document.getElementById('tabThoughts');
+    const tabChat = document.getElementById('tabChat');
+    const thoughtsTab = document.getElementById('thoughtsTab');
+    const chatTab = document.getElementById('chatTab');
+
+    if (tabName === 'thoughts') {
+        tabThoughts.classList.add('active');
+        tabChat.classList.remove('active');
+        thoughtsTab.classList.add('active');
+        chatTab.classList.remove('active');
+    } else {
+        tabThoughts.classList.remove('active');
+        tabChat.classList.add('active');
+        thoughtsTab.classList.remove('active');
+        chatTab.classList.add('active');
+        // При переключении на чат можно обновить сообщения
+        renderChatMessages();
     }
 }
 
 // ==================== ОБРАБОТЧИКИ СОБЫТИЙ ====================
-document.getElementById('saveProfileBtn').addEventListener('click', () => {
-    const petName = document.getElementById('petName').value.trim();
-    const petType = document.getElementById('petType').value;
-
-    if (!petName) {
-        alert('Пожалуйста, введите имя питомца!');
-        return;
-    }
-
-    saveProfile(petName, petType);
-    updateUIBasedOnProfile();
-});
-
-document.getElementById('editProfileBtn').addEventListener('click', () => {
-    localStorage.removeItem(STORAGE_KEY);
-    document.getElementById('petName').value = '';
-    document.getElementById('petType').value = 'Кот';
-    updateUIBasedOnProfile();
-});
-
-// ==================== НОВАЯ КНОПКА ПОДЕЛИТЬСЯ ====================
-document.getElementById('shareButton').addEventListener('click', async () => {
-    const profile = loadProfile();
-    if (!profile) return;
-
-    const thoughtElement = document.getElementById('thoughtText');
-    const thoughtText = thoughtElement.textContent;
-
-    // 1. Генерируем картинку
-    const imageBlob = await generateThoughtImage(thoughtText, profile.petName, profile.petType);
-
-    // 2. Запрашиваем права на фото
-    try {
-        await bridge.send('VKWebAppGetAuthToken', {
-            app_id: APP_ID,      // ⚠️ ID вашего приложения
-            scope: 'photos'
-        });
-    } catch (e) {
-        alert('Не удалось получить разрешение на загрузку фото. Публикация невозможна.');
-        return;
-    }
-
-    // 3. Загружаем фото в ВК
-    let attachment;
-    try {
-        attachment = await uploadWallPhoto(imageBlob);
-    } catch (e) {
-        console.error('Ошибка загрузки фото:', e);
-        alert('Не удалось загрузить изображение.');
-        return;
-    }
-
-    // 4. Публикуем пост с фото и ссылкой
-    const shareText = `😄 ${profile.petName} сегодня думает:\n\n${thoughtText}\n\n👉 Узнай мысли своего питомца каждый день!`;
-    // ⚠️ Ссылка на приложение (можно так же использовать APP_ID)
-    const link = `https://vk.com/app${APP_ID}`;
-
-    bridge.send('VKWebAppShowWallPostBox', {
-        message: shareText,
-        attachments: `${attachment},${link}`
-    }).catch(error => {
-        console.error('Ошибка при открытии окна поста:', error);
-        // Если не сработало — показываем текст
-        alert('Не удалось открыть окно публикации. Но вот твоя мысль: ' + thoughtText);
-    });
-});
-
-// ==================== ЗАПУСК ПРИ ЗАГРУЗКЕ ====================
 document.addEventListener('DOMContentLoaded', () => {
-    bridge.send('VKWebAppGetUserInfo').then((data) => {
-        console.log('Пользователь ВК:', data);
-    }).catch((error) => {
-        console.log('Не удалось получить данные пользователя (возможно, запуск не в ВК)');
-    });
+    bridge.send('VKWebAppGetUserInfo').catch(() => {});
 
     setTimeout(() => {
         updateUIBasedOnProfile();
     }, 500);
+
+    // Кнопка сохранения профиля
+    document.getElementById('saveProfileBtn').addEventListener('click', () => {
+        const petName = document.getElementById('petName').value.trim();
+        const petType = document.getElementById('petType').value;
+        if (!petName) {
+            alert('Введите имя питомца');
+            return;
+        }
+        saveProfile(petName, petType);
+        updateUIBasedOnProfile();
+    });
+
+    // Кнопка смены профиля
+    document.getElementById('editProfileBtn').addEventListener('click', () => {
+        localStorage.removeItem(STORAGE_KEY);
+        document.getElementById('petName').value = '';
+        document.getElementById('petType').value = 'Кот';
+        updateUIBasedOnProfile();
+    });
+
+    // Табы
+    document.getElementById('tabThoughts').addEventListener('click', () => switchTab('thoughts'));
+    document.getElementById('tabChat').addEventListener('click', () => switchTab('chat'));
+
+    // Поделиться мыслью
+    document.getElementById('shareButton').addEventListener('click', async () => {
+        const profile = loadProfile();
+        if (!profile) return;
+
+        const thoughtElement = document.getElementById('thoughtText');
+        const thoughtText = thoughtElement.textContent;
+
+        const imageBlob = await generateThoughtImage(thoughtText, profile.petName, profile.petType);
+
+        try {
+            await bridge.send('VKWebAppGetAuthToken', { app_id: APP_ID, scope: 'photos' });
+        } catch (e) {
+            alert('Нужен доступ к фото для публикации');
+            return;
+        }
+
+        let attachment;
+        try {
+            attachment = await uploadWallPhoto(imageBlob);
+        } catch (e) {
+            console.error('Ошибка загрузки фото:', e);
+            alert('Не удалось загрузить изображение');
+            return;
+        }
+
+        const shareText = `😄 ${profile.petName} сегодня думает:\n\n${thoughtText}\n\n👉 Узнай мысли своего питомца каждый день!`;
+        const link = `https://vk.com/app${APP_ID}`;
+
+        bridge.send('VKWebAppShowWallPostBox', {
+            message: shareText,
+            attachments: `${attachment},${link}`
+        }).catch(error => {
+            console.error('Ошибка при открытии окна поста:', error);
+            alert('Не удалось открыть окно публикации. Но вот твоя мысль: ' + thoughtText);
+        });
+    });
+
+    // Отправка сообщения в чате
+    document.getElementById('sendChatBtn').addEventListener('click', handleChatSend);
+    document.getElementById('chatInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleChatSend();
+    });
 });
