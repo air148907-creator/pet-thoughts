@@ -4,8 +4,6 @@ bridge.send('VKWebAppInit');
 
 // ==================== КОНСТАНТЫ ====================
 const APP_ID = 54466618; // ВАШ ID ПРИЛОЖЕНИЯ
-const MISTRAL_API_KEY = 'vWQanTkEq24uYCa6uaD73NSK6oD4ioh6'; // Ваш ключ
-const MISTRAL_MODEL = 'mistral-tiny';
 
 const thoughtsDB = [
     "Сегодня я буду игнорировать тебя ровно до 18:00, потом приду проситься на ручки. Это закон.",
@@ -218,30 +216,24 @@ async function sendToMistral(userMessage) {
     ];
 
     try {
-        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        // Отправляем запрос на свой Cloudflare Worker
+        // ⚠️ ЗАМЕНИТЕ URL НА АДРЕС ВАШЕГО WORKER
+        const response = await fetch('https://sparkling-violet-2bcf.air148907.workers.dev', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${MISTRAL_API_KEY}`
-            },
-            body: JSON.stringify({
-                model: MISTRAL_MODEL,
-                messages: messages,
-                temperature: 0.8,
-                max_tokens: 150
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages })
         });
 
         if (!response.ok) {
             const errorData = await response.text();
-            console.error('Mistral API error:', errorData);
+            console.error('Server error:', errorData);
             return null;
         }
 
         const data = await response.json();
         return data.choices[0].message.content.trim();
     } catch (error) {
-        console.error('Ошибка при вызове Mistral AI:', error);
+        console.error('Ошибка при вызове своего сервера:', error);
         return null;
     }
 }
