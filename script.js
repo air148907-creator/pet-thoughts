@@ -200,7 +200,7 @@ function renderChatMessages() {
     container.scrollTop = container.scrollHeight;
 }
 
-// Новая функция очистки истории чата
+// Функция очистки истории чата
 function clearChatHistory() {
     if (confirm('Очистить всю историю сообщений?')) {
         localStorage.removeItem(CHAT_HISTORY_KEY);
@@ -349,7 +349,7 @@ async function renderHoroscope() {
 
     horoscopeDiv.classList.add('hidden');
     loadingDiv.classList.remove('hidden');
-    timerDiv.innerHTML = ''; // очищаем предыдущий таймер
+    timerDiv.innerHTML = '';
 
     const result = await getHoroscopeForToday();
 
@@ -362,7 +362,6 @@ async function renderHoroscope() {
         horoscopeDiv.innerHTML = '<p class="horoscope-placeholder">😿 Не удалось получить гороскоп. Попробуй позже.</p>';
     } else {
         horoscopeDiv.innerHTML = `<p>${result.text}</p>`;
-        // Отображаем время до обновления
         const { hours, minutes } = getTimeUntilMidnight();
         timerDiv.innerHTML = `🔄 Следующий гороскоп через ${hours} ч ${minutes} мин`;
     }
@@ -468,8 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         saveProfile(petName, petType, zodiacSign);
-        // При смене имени сбрасываем сегодняшний кеш гороскопа, чтобы при следующем открытии сгенерировался новый с актуальным именем
-        clearTodayHoroscopeCache();
+        clearTodayHoroscopeCache(); // сбрасываем кеш, чтобы гороскоп обновился с новым именем
         updateUIBasedOnProfile();
     });
 
@@ -489,10 +487,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // === ОБРАБОТКА ТАБОВ (с поддержкой мобильных) ===
+    // Обработка табов (только click, без touchstart)
     const tabsContainer = document.querySelector('.tabs');
     if (tabsContainer) {
-        // Обработка кликов (для мыши)
         tabsContainer.addEventListener('click', (e) => {
             const target = e.target.closest('.tab-btn');
             if (!target) return;
@@ -505,21 +502,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 switchTab('horoscope');
             }
         });
-
-        // Дополнительная обработка касаний для мобильных
-        tabsContainer.addEventListener('touchstart', (e) => {
-            const target = e.target.closest('.tab-btn');
-            if (!target) return;
-
-            e.preventDefault();
-            if (target.id === 'tabThoughts') {
-                switchTab('thoughts');
-            } else if (target.id === 'tabChat') {
-                switchTab('chat');
-            } else if (target.id === 'tabHoroscope') {
-                switchTab('horoscope');
-            }
-        }, { passive: false });
     }
 
     // Поделиться мыслью
