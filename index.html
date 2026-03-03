@@ -89,6 +89,8 @@
                 <div class="chat-input-area">
                     <input type="text" id="chatInput" placeholder="Спроси Мафию..." maxlength="200">
                     <button class="vk-button send-btn" id="sendChatBtn">➤</button>
+                    <!-- Новая кнопка сброса чата -->
+                    <button class="vk-button clear-chat-btn" id="clearChatBtn" title="Очистить историю чата">🗑️</button>
                 </div>
             </div>
 
@@ -102,6 +104,8 @@
                         <div class="loader" style="width: 30px; height: 30px;"></div>
                         <p>Кот Тимофей составляет прогноз...</p>
                     </div>
+                    <!-- Блок с таймером до обновления -->
+                    <div id="horoscopeTimer" class="horoscope-timer" style="text-align: center; margin-top: 15px; color: #666; font-size: 14px;"></div>
                 </div>
             </div>
         </div>

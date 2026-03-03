@@ -200,6 +200,14 @@ function renderChatMessages() {
     container.scrollTop = container.scrollHeight;
 }
 
+// Новая функция очистки истории чата
+function clearChatHistory() {
+    if (confirm('Очистить всю историю сообщений?')) {
+        localStorage.removeItem(CHAT_HISTORY_KEY);
+        renderChatMessages();
+    }
+}
+
 async function sendToMistral(userMessage) {
     const profile = loadProfile();
     if (!profile) return null;
@@ -260,7 +268,27 @@ async function handleChatSend() {
     }
 }
 
-// ==================== НОВЫЕ ФУНКЦИИ ДЛЯ ГОРОСКОПА ====================
+// ==================== ФУНКЦИИ ДЛЯ ГОРОСКОПА ====================
+
+// Очистка кеша сегодняшнего гороскопа (при смене имени)
+function clearTodayHoroscopeCache() {
+    const profile = loadProfile();
+    if (!profile || !profile.zodiacSign) return;
+    const today = getTodayDateString();
+    const cacheKey = `horoscope_${profile.zodiacSign}_${today}`;
+    localStorage.removeItem(cacheKey);
+}
+
+// Вычисление времени до полуночи
+function getTimeUntilMidnight() {
+    const now = new Date();
+    const midnight = new Date(now);
+    midnight.setHours(24, 0, 0, 0); // следующий день 00:00
+    const diffMs = midnight - now;
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    return { hours, minutes };
+}
 
 async function generateHoroscopeViaMistral(zodiacSign, petName, petType) {
     const systemPrompt = `Ты — кот Тимофей, но теперь ты выступаешь от имени питомца по имени ${petName} (${petType}). Составь короткий, весёлый и добрый гороскоп на сегодня для знака зодиака "${zodiacSign}". Используй лёгкий юмор, но без сарказма. Гороскоп должен быть уникальным для этого дня (учти, что сегодня ${getTodayDateString()}). Ответ дай в виде 2-3 предложений, только текст, без пояснений.`;
@@ -316,10 +344,12 @@ async function getHoroscopeForToday() {
 async function renderHoroscope() {
     const horoscopeDiv = document.getElementById('horoscopeText');
     const loadingDiv = document.getElementById('horoscopeLoading');
-    if (!horoscopeDiv || !loadingDiv) return;
+    const timerDiv = document.getElementById('horoscopeTimer');
+    if (!horoscopeDiv || !loadingDiv || !timerDiv) return;
 
     horoscopeDiv.classList.add('hidden');
     loadingDiv.classList.remove('hidden');
+    timerDiv.innerHTML = ''; // очищаем предыдущий таймер
 
     const result = await getHoroscopeForToday();
 
@@ -332,6 +362,9 @@ async function renderHoroscope() {
         horoscopeDiv.innerHTML = '<p class="horoscope-placeholder">😿 Не удалось получить гороскоп. Попробуй позже.</p>';
     } else {
         horoscopeDiv.innerHTML = `<p>${result.text}</p>`;
+        // Отображаем время до обновления
+        const { hours, minutes } = getTimeUntilMidnight();
+        timerDiv.innerHTML = `🔄 Следующий гороскоп через ${hours} ч ${minutes} мин`;
     }
 }
 
@@ -435,6 +468,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         saveProfile(petName, petType, zodiacSign);
+        // При смене имени сбрасываем сегодняшний кеш гороскопа, чтобы при следующем открытии сгенерировался новый с актуальным именем
+        clearTodayHoroscopeCache();
         updateUIBasedOnProfile();
     });
 
@@ -454,8 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // === ИСПРАВЛЕНИЕ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ ===
-    // Вместо трёх отдельных обработчиков используем делегирование на контейнере .tabs
+    // === ОБРАБОТКА ТАБОВ (с поддержкой мобильных) ===
     const tabsContainer = document.querySelector('.tabs');
     if (tabsContainer) {
         // Обработка кликов (для мыши)
@@ -472,12 +506,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Дополнительная обработка касаний для мобильных (с preventDefault)
+        // Дополнительная обработка касаний для мобильных
         tabsContainer.addEventListener('touchstart', (e) => {
             const target = e.target.closest('.tab-btn');
             if (!target) return;
 
-            e.preventDefault(); // предотвращаем возможные действия браузера (например, двойной тап для зума)
+            e.preventDefault();
             if (target.id === 'tabThoughts') {
                 switchTab('thoughts');
             } else if (target.id === 'tabChat') {
@@ -532,4 +566,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('chatInput')?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleChatSend();
     });
+
+    // Кнопка очистки чата
+    document.getElementById('clearChatBtn')?.addEventListener('click', clearChatHistory);
 });
