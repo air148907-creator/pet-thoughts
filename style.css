@@ -184,6 +184,9 @@ body {
     color: #666;
     cursor: pointer;
     transition: all 0.3s;
+    /* Улучшение для мобильных */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
 }
 
 .tab-btn.active {

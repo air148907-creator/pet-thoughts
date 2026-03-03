@@ -454,10 +454,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Табы
-    document.getElementById('tabThoughts')?.addEventListener('click', () => switchTab('thoughts'));
-    document.getElementById('tabChat')?.addEventListener('click', () => switchTab('chat'));
-    document.getElementById('tabHoroscope')?.addEventListener('click', () => switchTab('horoscope'));
+    // === ИСПРАВЛЕНИЕ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ ===
+    // Вместо трёх отдельных обработчиков используем делегирование на контейнере .tabs
+    const tabsContainer = document.querySelector('.tabs');
+    if (tabsContainer) {
+        // Обработка кликов (для мыши)
+        tabsContainer.addEventListener('click', (e) => {
+            const target = e.target.closest('.tab-btn');
+            if (!target) return;
+
+            if (target.id === 'tabThoughts') {
+                switchTab('thoughts');
+            } else if (target.id === 'tabChat') {
+                switchTab('chat');
+            } else if (target.id === 'tabHoroscope') {
+                switchTab('horoscope');
+            }
+        });
+
+        // Дополнительная обработка касаний для мобильных (с preventDefault)
+        tabsContainer.addEventListener('touchstart', (e) => {
+            const target = e.target.closest('.tab-btn');
+            if (!target) return;
+
+            e.preventDefault(); // предотвращаем возможные действия браузера (например, двойной тап для зума)
+            if (target.id === 'tabThoughts') {
+                switchTab('thoughts');
+            } else if (target.id === 'tabChat') {
+                switchTab('chat');
+            } else if (target.id === 'tabHoroscope') {
+                switchTab('horoscope');
+            }
+        }, { passive: false });
+    }
 
     // Поделиться мыслью
     document.getElementById('shareButton')?.addEventListener('click', async () => {
