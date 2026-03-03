@@ -3,7 +3,7 @@ const bridge = window.vkBridge;
 bridge.send('VKWebAppInit');
 
 // ==================== КОНСТАНТЫ ====================
-const APP_ID = 54466618; // ВАШ ID ПРИЛОЖЕНИЯ
+const APP_ID = 54466618;
 
 const thoughtsDB = [
     "Сегодня я буду игнорировать тебя ровно до 18:00, потом приду проситься на ручки. Это закон.",
@@ -186,6 +186,16 @@ function addChatMessage(role, content) {
     renderChatMessages();
 }
 
+function scrollChatToBottom(smooth = true) {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+    if (smooth) {
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    } else {
+        container.scrollTop = container.scrollHeight;
+    }
+}
+
 function renderChatMessages() {
     const container = document.getElementById('chatMessages');
     if (!container) return;
@@ -197,10 +207,9 @@ function renderChatMessages() {
         div.textContent = msg.content;
         container.appendChild(div);
     });
-    container.scrollTop = container.scrollHeight;
+    scrollChatToBottom(false);
 }
 
-// Функция очистки истории чата
 function clearChatHistory() {
     if (confirm('Очистить всю историю сообщений?')) {
         localStorage.removeItem(CHAT_HISTORY_KEY);
@@ -231,8 +240,7 @@ async function sendToMistral(userMessage) {
         });
 
         if (!response.ok) {
-            const errorData = await response.text();
-            console.error('Server error:', errorData);
+            console.error('Server error:', await response.text());
             return null;
         }
 
@@ -252,29 +260,31 @@ async function handleChatSend() {
 
     input.value = '';
     addChatMessage('user', text);
+    scrollChatToBottom(true);
 
     const container = document.getElementById('chatMessages');
     const typingDiv = document.createElement('div');
     typingDiv.className = 'chat-message assistant typing';
     typingDiv.textContent = 'Мафия печатает...';
     container.appendChild(typingDiv);
+    scrollChatToBottom(true);
 
     const reply = await sendToMistral(text);
     container.removeChild(typingDiv);
+
     if (reply) {
         addChatMessage('assistant', reply);
     } else {
         addChatMessage('assistant', 'Мяу... что-то пошло не так. Попробуй позже.');
     }
+    scrollChatToBottom(true);
 }
 
 // ==================== ФУНКЦИИ ДЛЯ ГОРОСКОПА ====================
-
-// Вычисление времени до полуночи
 function getTimeUntilMidnight() {
     const now = new Date();
     const midnight = new Date(now);
-    midnight.setHours(24, 0, 0, 0); // следующий день 00:00
+    midnight.setHours(24, 0, 0, 0);
     const diffMs = midnight - now;
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
@@ -296,15 +306,12 @@ async function generateHoroscopeViaMistral(zodiacSign, petName, petType) {
             })
         });
 
-        if (!response.ok) {
-            console.error('Server error:', await response.text());
-            return null;
-        }
+        if (!response.ok) return null;
 
         const data = await response.json();
         return data.choices[0].message.content.trim();
     } catch (error) {
-        console.error('Ошибка при генерации гороскопа:', error);
+        console.error('Ошибка генерации гороскопа:', error);
         return null;
     }
 }
@@ -319,35 +326,19 @@ async function getHoroscopeForToday() {
     const cacheKey = `horoscope_${profile.zodiacSign}_${today}`;
     const cached = localStorage.getItem(cacheKey);
 
-    let cachedData = null;
     if (cached) {
         try {
-            cachedData = JSON.parse(cached);
-        } catch {
-            // старый формат (просто строка) — преобразуем
-            cachedData = { text: cached, petName: null };
-        }
+            const parsed = JSON.parse(cached);
+            return { text: parsed.text || parsed };
+        } catch {}
     }
 
-    // Если кеш есть и имя совпадает с текущим — возвращаем как есть
-    if (cachedData && cachedData.petName === profile.petName) {
-        return { text: cachedData.text };
-    }
-
-    // Если кеш есть, но имя не совпадает — возвращаем старый текст с флагом oldName
-    if (cachedData && cachedData.petName !== profile.petName) {
-        return { text: cachedData.text, oldName: true };
-    }
-
-    // Если кеша нет — генерируем новый
     const horoscope = await generateHoroscopeViaMistral(profile.zodiacSign, profile.petName, profile.petType);
     if (horoscope) {
-        const dataToStore = JSON.stringify({ text: horoscope, petName: profile.petName });
-        localStorage.setItem(cacheKey, dataToStore);
+        localStorage.setItem(cacheKey, JSON.stringify({ text: horoscope, petName: profile.petName }));
         return { text: horoscope };
-    } else {
-        return { error: 'generation_failed' };
     }
+    return { error: 'generation_failed' };
 }
 
 async function renderHoroscope() {
@@ -372,11 +363,7 @@ async function renderHoroscope() {
     } else {
         horoscopeDiv.innerHTML = `<p>${result.text}</p>`;
         const { hours, minutes } = getTimeUntilMidnight();
-        if (result.oldName) {
-            timerDiv.innerHTML = `🔄 Новый гороскоп через ${hours} ч ${minutes} мин`;
-        } else {
-            timerDiv.innerHTML = `🔄 Следующий гороскоп через ${hours} ч ${minutes} мин`;
-        }
+        timerDiv.innerHTML = `🔄 Новый гороскоп через ${hours} ч ${minutes} мин`;
     }
 }
 
@@ -394,7 +381,6 @@ function updateUIBasedOnProfile() {
         loadingScreen.classList.add('hidden');
         profileScreen.classList.remove('hidden');
         mainInterface.classList.add('hidden');
-        // Сброс полей для нового профиля
         document.getElementById('petName').value = '';
         document.getElementById('petType').value = 'Кот';
         document.getElementById('zodiacSign').value = '';
@@ -449,6 +435,7 @@ function switchTab(tabName) {
         tabChat.classList.add('active');
         chatTab.classList.add('active');
         renderChatMessages();
+        setTimeout(() => scrollChatToBottom(false), 100);
     } else if (tabName === 'horoscope') {
         tabHoroscope.classList.add('active');
         horoscopeTab.classList.add('active');
@@ -464,7 +451,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUIBasedOnProfile();
     }, 500);
 
-    // Сохранение профиля
     document.getElementById('saveProfileBtn')?.addEventListener('click', () => {
         const petName = document.getElementById('petName')?.value.trim();
         const petType = document.getElementById('petType')?.value;
@@ -480,11 +466,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         saveProfile(petName, petType, zodiacSign);
-        // Примечание: кеш гороскопа не сбрасываем, чтобы сохранить старый текст до завтра
         updateUIBasedOnProfile();
     });
 
-    // Редактирование профиля
     document.getElementById('editProfileBtn')?.addEventListener('click', () => {
         const profile = loadProfile();
         if (profile) {
@@ -500,24 +484,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Обработка табов
     const tabsContainer = document.querySelector('.tabs');
     if (tabsContainer) {
         tabsContainer.addEventListener('click', (e) => {
             const target = e.target.closest('.tab-btn');
             if (!target) return;
 
-            if (target.id === 'tabThoughts') {
-                switchTab('thoughts');
-            } else if (target.id === 'tabChat') {
-                switchTab('chat');
-            } else if (target.id === 'tabHoroscope') {
-                switchTab('horoscope');
-            }
+            if (target.id === 'tabThoughts') switchTab('thoughts');
+            else if (target.id === 'tabChat') switchTab('chat');
+            else if (target.id === 'tabHoroscope') switchTab('horoscope');
         });
     }
 
-    // Поделиться мыслью
     document.getElementById('shareButton')?.addEventListener('click', async () => {
         const profile = loadProfile();
         if (!profile) return;
@@ -556,12 +534,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Отправка чата
     document.getElementById('sendChatBtn')?.addEventListener('click', handleChatSend);
     document.getElementById('chatInput')?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleChatSend();
     });
 
-    // Кнопка очистки чата
     document.getElementById('clearChatBtn')?.addEventListener('click', clearChatHistory);
+
+    document.getElementById('chatInput')?.addEventListener('focus', () => {
+        setTimeout(() => scrollChatToBottom(true), 300);
+    });
 });
