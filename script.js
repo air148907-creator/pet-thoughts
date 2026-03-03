@@ -49,8 +49,8 @@ function getThoughtIndexForToday(petName, petType) {
     return Math.abs(hash) % thoughtsDB.length;
 }
 
-function saveProfile(name, type) {
-    const profile = { petName: name, petType: type };
+function saveProfile(name, type, zodiacSign) {
+    const profile = { petName: name, petType: type, zodiacSign: zodiacSign };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
 }
 
@@ -216,11 +216,10 @@ async function sendToMistral(userMessage) {
     ];
 
     try {
-        // ⚠️ ЗАМЕНИТЕ URL НА АДРЕС ВАШЕГО WORKER
         const response = await fetch('https://sparkling-violet-2bcf.air148907.workers.dev/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages }) // отправляем объект с полем messages
+            body: JSON.stringify({ messages })
         });
 
         if (!response.ok) {
@@ -261,6 +260,81 @@ async function handleChatSend() {
     }
 }
 
+// ==================== НОВЫЕ ФУНКЦИИ ДЛЯ ГОРОСКОПА ====================
+
+async function generateHoroscopeViaMistral(zodiacSign, petName, petType) {
+    const systemPrompt = `Ты — кот Тимофей, но теперь ты выступаешь от имени питомца по имени ${petName} (${petType}). Составь короткий, весёлый и добрый гороскоп на сегодня для знака зодиака "${zodiacSign}". Используй лёгкий юмор, но без сарказма. Гороскоп должен быть уникальным для этого дня (учти, что сегодня ${getTodayDateString()}). Ответ дай в виде 2-3 предложений, только текст, без пояснений.`;
+
+    try {
+        const response = await fetch('https://sparkling-violet-2bcf.air148907.workers.dev/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: `Напиши гороскоп для знака ${zodiacSign}.` }
+                ]
+            })
+        });
+
+        if (!response.ok) {
+            console.error('Server error:', await response.text());
+            return null;
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content.trim();
+    } catch (error) {
+        console.error('Ошибка при генерации гороскопа:', error);
+        return null;
+    }
+}
+
+async function getHoroscopeForToday() {
+    const profile = loadProfile();
+    if (!profile || !profile.zodiacSign) {
+        return { error: 'no_zodiac' };
+    }
+
+    const today = getTodayDateString();
+    const cacheKey = `horoscope_${profile.zodiacSign}_${today}`;
+    const cached = localStorage.getItem(cacheKey);
+
+    if (cached) {
+        return { text: cached };
+    }
+
+    const horoscope = await generateHoroscopeViaMistral(profile.zodiacSign, profile.petName, profile.petType);
+    if (horoscope) {
+        localStorage.setItem(cacheKey, horoscope);
+        return { text: horoscope };
+    } else {
+        return { error: 'generation_failed' };
+    }
+}
+
+async function renderHoroscope() {
+    const horoscopeDiv = document.getElementById('horoscopeText');
+    const loadingDiv = document.getElementById('horoscopeLoading');
+    if (!horoscopeDiv || !loadingDiv) return;
+
+    horoscopeDiv.classList.add('hidden');
+    loadingDiv.classList.remove('hidden');
+
+    const result = await getHoroscopeForToday();
+
+    loadingDiv.classList.add('hidden');
+    horoscopeDiv.classList.remove('hidden');
+
+    if (result.error === 'no_zodiac') {
+        horoscopeDiv.innerHTML = '<p class="horoscope-placeholder">✨ Сначала укажи свой знак зодиака в настройках профиля (нажми ✏️).</p>';
+    } else if (result.error === 'generation_failed') {
+        horoscopeDiv.innerHTML = '<p class="horoscope-placeholder">😿 Не удалось получить гороскоп. Попробуй позже.</p>';
+    } else {
+        horoscopeDiv.innerHTML = `<p>${result.text}</p>`;
+    }
+}
+
 // ==================== ОБНОВЛЕНИЕ ИНТЕРФЕЙСА ====================
 function updateUIBasedOnProfile() {
     const profile = loadProfile();
@@ -275,6 +349,11 @@ function updateUIBasedOnProfile() {
         loadingScreen.classList.add('hidden');
         profileScreen.classList.remove('hidden');
         mainInterface.classList.add('hidden');
+        // Сброс полей для нового профиля
+        document.getElementById('petName').value = '';
+        document.getElementById('petType').value = 'Кот';
+        document.getElementById('zodiacSign').value = '';
+        document.getElementById('profileTitle').textContent = '🫵 Кто тут у нас?';
     } else {
         loadingScreen.classList.add('hidden');
         profileScreen.classList.add('hidden');
@@ -304,22 +383,31 @@ function updateUIBasedOnProfile() {
 function switchTab(tabName) {
     const tabThoughts = document.getElementById('tabThoughts');
     const tabChat = document.getElementById('tabChat');
+    const tabHoroscope = document.getElementById('tabHoroscope');
     const thoughtsTab = document.getElementById('thoughtsTab');
     const chatTab = document.getElementById('chatTab');
+    const horoscopeTab = document.getElementById('horoscopeTab');
 
-    if (!tabThoughts || !tabChat || !thoughtsTab || !chatTab) return;
+    if (!tabThoughts || !tabChat || !tabHoroscope || !thoughtsTab || !chatTab || !horoscopeTab) return;
+
+    tabThoughts.classList.remove('active');
+    tabChat.classList.remove('active');
+    tabHoroscope.classList.remove('active');
+    thoughtsTab.classList.remove('active');
+    chatTab.classList.remove('active');
+    horoscopeTab.classList.remove('active');
 
     if (tabName === 'thoughts') {
         tabThoughts.classList.add('active');
-        tabChat.classList.remove('active');
         thoughtsTab.classList.add('active');
-        chatTab.classList.remove('active');
-    } else {
-        tabThoughts.classList.remove('active');
+    } else if (tabName === 'chat') {
         tabChat.classList.add('active');
-        thoughtsTab.classList.remove('active');
         chatTab.classList.add('active');
         renderChatMessages();
+    } else if (tabName === 'horoscope') {
+        tabHoroscope.classList.add('active');
+        horoscopeTab.classList.add('active');
+        renderHoroscope();
     }
 }
 
@@ -335,29 +423,43 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('saveProfileBtn')?.addEventListener('click', () => {
         const petName = document.getElementById('petName')?.value.trim();
         const petType = document.getElementById('petType')?.value;
+        const zodiacSign = document.getElementById('zodiacSign')?.value;
+
         if (!petName) {
             alert('Введите имя питомца');
             return;
         }
-        saveProfile(petName, petType);
+        if (!zodiacSign) {
+            alert('Выберите свой знак зодиака');
+            return;
+        }
+
+        saveProfile(petName, petType, zodiacSign);
         updateUIBasedOnProfile();
     });
 
-    // Смена профиля
+    // Редактирование профиля
     document.getElementById('editProfileBtn')?.addEventListener('click', () => {
-        localStorage.removeItem(STORAGE_KEY);
-        const nameInput = document.getElementById('petName');
-        const typeSelect = document.getElementById('petType');
-        if (nameInput) nameInput.value = '';
-        if (typeSelect) typeSelect.value = 'Кот';
-        updateUIBasedOnProfile();
+        const profile = loadProfile();
+        if (profile) {
+            document.getElementById('petName').value = profile.petName || '';
+            document.getElementById('petType').value = profile.petType || 'Кот';
+            document.getElementById('zodiacSign').value = profile.zodiacSign || '';
+            document.getElementById('profileTitle').textContent = '✏️ Редактировать профиль';
+            document.getElementById('loadingScreen').classList.add('hidden');
+            document.getElementById('profileScreen').classList.remove('hidden');
+            document.getElementById('mainInterface').classList.add('hidden');
+        } else {
+            updateUIBasedOnProfile();
+        }
     });
 
     // Табы
     document.getElementById('tabThoughts')?.addEventListener('click', () => switchTab('thoughts'));
     document.getElementById('tabChat')?.addEventListener('click', () => switchTab('chat'));
+    document.getElementById('tabHoroscope')?.addEventListener('click', () => switchTab('horoscope'));
 
-    // Поделиться
+    // Поделиться мыслью
     document.getElementById('shareButton')?.addEventListener('click', async () => {
         const profile = loadProfile();
         if (!profile) return;

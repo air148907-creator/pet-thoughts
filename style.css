@@ -333,3 +333,19 @@ body {
     margin-top: 0;
     padding: 0;
 }
+
+/* Стили для гороскопа */
+.horoscope-text {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.horoscope-container .loader {
+    margin: 0 auto 10px;
+}
+
+.horoscope-placeholder {
+    color: #999;
+    font-style: italic;
+    text-align: center;
+}

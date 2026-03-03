@@ -15,9 +15,9 @@
             <p>Загружаем...</p>
         </div>
 
-        <!-- Экран создания профиля -->
+        <!-- Экран создания/редактирования профиля -->
         <div class="profile-screen hidden" id="profileScreen">
-            <h1 class="title">🫵 Кто тут у нас?</h1>
+            <h1 class="title" id="profileTitle">🫵 Кто тут у нас?</h1>
             <div class="input-group">
                 <label for="petName">Имя питомца</label>
                 <input type="text" id="petName" placeholder="Например, Барсик" maxlength="20">
@@ -35,6 +35,25 @@
                     <option value="Другой">❓ Другой</option>
                 </select>
             </div>
+            <!-- Поле для знака зодиака пользователя -->
+            <div class="input-group">
+                <label for="zodiacSign">Твой знак зодиака</label>
+                <select id="zodiacSign">
+                    <option value="">-- выбери знак --</option>
+                    <option value="Овен">♈ Овен</option>
+                    <option value="Телец">♉ Телец</option>
+                    <option value="Близнецы">♊ Близнецы</option>
+                    <option value="Рак">♋ Рак</option>
+                    <option value="Лев">♌ Лев</option>
+                    <option value="Дева">♍ Дева</option>
+                    <option value="Весы">♎ Весы</option>
+                    <option value="Скорпион">♏ Скорпион</option>
+                    <option value="Стрелец">♐ Стрелец</option>
+                    <option value="Козерог">♑ Козерог</option>
+                    <option value="Водолей">♒ Водолей</option>
+                    <option value="Рыбы">♓ Рыбы</option>
+                </select>
+            </div>
             <button class="vk-button" id="saveProfileBtn">Сохранить и продолжить</button>
         </div>
 
@@ -43,13 +62,14 @@
             <!-- Шапка с именем питомца и кнопкой смены профиля -->
             <div class="header">
                 <div class="pet-info" id="petInfoDisplay"></div>
-                <button class="edit-profile-btn" id="editProfileBtn" title="Сменить питомца">✏️</button>
+                <button class="edit-profile-btn" id="editProfileBtn" title="Редактировать профиль">✏️</button>
             </div>
 
-            <!-- Табы -->
+            <!-- Три таба -->
             <div class="tabs">
                 <button class="tab-btn active" id="tabThoughts">💭 Мысли</button>
                 <button class="tab-btn" id="tabChat">💬 Чат с Мафией</button>
+                <button class="tab-btn" id="tabHoroscope">🔮 Гороскоп</button>
             </div>
 
             <!-- Контент таба "Мысли" -->
@@ -65,12 +85,23 @@
 
             <!-- Контент таба "Чат" -->
             <div class="tab-content" id="chatTab">
-                <div class="chat-messages" id="chatMessages">
-                    <!-- Сюда будут добавляться сообщения -->
-                </div>
+                <div class="chat-messages" id="chatMessages"></div>
                 <div class="chat-input-area">
                     <input type="text" id="chatInput" placeholder="Спроси Мафию..." maxlength="200">
                     <button class="vk-button send-btn" id="sendChatBtn">➤</button>
+                </div>
+            </div>
+
+            <!-- Контент таба "Гороскоп" -->
+            <div class="tab-content" id="horoscopeTab">
+                <div class="horoscope-container" style="padding: 15px;">
+                    <div id="horoscopeText" class="horoscope-text" style="font-size: 18px; line-height: 1.5; background: #f0f0f0; border-radius: 20px; padding: 25px; min-height: 200px;">
+                        <!-- Здесь появится текст гороскопа -->
+                    </div>
+                    <div id="horoscopeLoading" class="hidden" style="text-align: center; margin-top: 20px;">
+                        <div class="loader" style="width: 30px; height: 30px;"></div>
+                        <p>Кот Тимофей составляет прогноз...</p>
+                    </div>
                 </div>
             </div>
         </div>
