@@ -210,8 +210,22 @@ function renderChatMessages() {
     scrollChatToBottom(false);
 }
 
+// Улучшенная функция очистки с обработкой мобильных устройств
 function clearChatHistory() {
-    if (confirm('Очистить всю историю сообщений?')) {
+    // Используем стандартный confirm, но оборачиваем в try-catch на случай блокировки в webview
+    let confirmed = false;
+    try {
+        confirmed = confirm('Очистить всю историю сообщений?');
+    } catch (e) {
+        console.warn('confirm не сработал, используем альтернативу');
+        // Если confirm заблокирован (редко), можно показать просто alert и спросить через кастомный диалог,
+        // но для простоты предложим альтернативу: очищаем без подтверждения? Лучше не надо.
+        // Вместо этого используем простой alert и выходим:
+        alert('Очистка временно недоступна. Попробуйте позже.');
+        return;
+    }
+
+    if (confirmed) {
         localStorage.removeItem(CHAT_HISTORY_KEY);
         renderChatMessages();
     }
@@ -539,7 +553,34 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') handleChatSend();
     });
 
-    document.getElementById('clearChatBtn')?.addEventListener('click', clearChatHistory);
+    // ========== УЛУЧШЕННАЯ ОБРАБОТКА КНОПКИ ОЧИСТКИ ==========
+    const clearBtn = document.getElementById('clearChatBtn');
+    if (clearBtn) {
+        // Обработчик для мыши/касаний (click)
+        clearBtn.addEventListener('click', (e) => {
+            e.preventDefault(); // на всякий случай
+            clearChatHistory();
+        });
+
+        // Специально для мобильных устройств (iPhone и др.) - обработка touchend
+        clearBtn.addEventListener('touchend', (e) => {
+            e.preventDefault(); // предотвращаем возможную прокрутку или масштабирование
+            clearChatHistory();
+        });
+
+        // Дополнительно: подавляем двойной вызов, но в нашей функции clearChatHistory это безопасно
+    }
+
+    // Улучшаем поведение при фокусе поля ввода (чтобы панель не перекрывалась клавиатурой)
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput) {
+        chatInput.addEventListener('focus', () => {
+            // Даём время клавиатуре появиться, затем прокручиваем панель ввода в видимую зону
+            setTimeout(() => {
+                chatInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 300);
+        });
+    }
 
     document.getElementById('chatInput')?.addEventListener('focus', () => {
         setTimeout(() => scrollChatToBottom(true), 300);

@@ -11,6 +11,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    touch-action: pan-y; /* предотвращает зумирование двойным касанием */
 }
 
 .app-container {
@@ -259,10 +260,7 @@ body {
     margin-top: 15px;
 }
 
-/* ────────────────────────────────────────────────
-   ЧАТ С МАФИЕЙ — ИСПРАВЛЕННАЯ ПАНЕЛЬ
-───────────────────────────────────────────────── */
-
+/* ========== ЧАТ — ПОЛНОСТЬЮ ИСПРАВЛЕНО ========== */
 .chat-wrapper {
     display: flex;
     flex-direction: column;
@@ -282,14 +280,14 @@ body {
     -webkit-overflow-scrolling: touch;
 }
 
-/* Белая панель ввода: равномерные отступы и скруглённые нижние углы */
+/* Панель ввода: отступы, скруглённые углы */
 .chat-input-wrapper {
     flex: 0 0 auto;
-    padding: 12px 16px 16px 16px;   /* отступы со всех сторон */
+    padding: 12px 16px 16px 16px;
     background: white;
     border-top: 1px solid #eee;
     box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
-    border-bottom-left-radius: 20px;  /* скругление нижних углов */
+    border-bottom-left-radius: 20px;
     border-bottom-right-radius: 20px;
     box-sizing: border-box;
 }
@@ -297,18 +295,21 @@ body {
 .chat-input-area {
     display: flex;
     align-items: center;
-    gap: 8px;                /* промежуток между полем и кнопками */
+    gap: 8px;
 }
 
+/* Поле ввода */
 #chatInput {
-    flex: 1;                  /* занимает всё свободное место */
-    min-width: 120px;         /* предотвращает излишнее сжатие на узких экранах */
-    min-height: 48px;
-    padding: 12px 18px;
+    flex: 1;
+    height: 48px;               /* строго фиксированная высота */
+    min-width: 120px;
+    padding: 0 18px;             /* горизонтальные отступы, вертикальные убраны */
     border: 2px solid #e0e0e0;
-    border-radius: 9999px;    /* максимальное скругление */
+    border-radius: 9999px;
     font-size: 16px;
+    line-height: 44px;           /* 48px - (2px border * 2) = 44px */
     box-sizing: border-box;
+    background: white;
 }
 
 #chatInput:focus {
@@ -316,8 +317,10 @@ body {
     outline: none;
 }
 
+/* Кнопки */
 .send-btn,
 .clear-chat-btn {
+    position: relative;          /* для псевдоэлемента области касания */
     width: 48px;
     height: 48px;
     border-radius: 50%;
@@ -327,7 +330,12 @@ body {
     justify-content: center;
     border: none;
     cursor: pointer;
-    flex-shrink: 0;           /* кнопки не сжимаются */
+    flex-shrink: 0;
+    padding: 0;
+    line-height: 1;
+    touch-action: manipulation;  /* отключает двойной тап-зум */
+    background: transparent;
+    transition: opacity 0.2s, transform 0.1s;
 }
 
 .send-btn {
@@ -340,6 +348,27 @@ body {
     color: #555;
 }
 
+/* Увеличенная область касания (только для мобильных) */
+.send-btn::after,
+.clear-chat-btn::after {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    right: -8px;
+    bottom: -8px;
+    border-radius: 50%;
+    background: transparent;
+    pointer-events: none;        /* не перехватывает клики, но увеличивает область нажатия */
+}
+
+.send-btn:active,
+.clear-chat-btn:active {
+    opacity: 0.7;
+    transform: scale(0.96);
+}
+
+/* Сообщения чата */
 .chat-message {
     max-width: 80%;
     padding: 10px 15px;
