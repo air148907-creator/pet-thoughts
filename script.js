@@ -270,15 +270,6 @@ async function handleChatSend() {
 
 // ==================== ФУНКЦИИ ДЛЯ ГОРОСКОПА ====================
 
-// Очистка кеша сегодняшнего гороскопа (при смене имени)
-function clearTodayHoroscopeCache() {
-    const profile = loadProfile();
-    if (!profile || !profile.zodiacSign) return;
-    const today = getTodayDateString();
-    const cacheKey = `horoscope_${profile.zodiacSign}_${today}`;
-    localStorage.removeItem(cacheKey);
-}
-
 // Вычисление времени до полуночи
 function getTimeUntilMidnight() {
     const now = new Date();
@@ -328,13 +319,31 @@ async function getHoroscopeForToday() {
     const cacheKey = `horoscope_${profile.zodiacSign}_${today}`;
     const cached = localStorage.getItem(cacheKey);
 
+    let cachedData = null;
     if (cached) {
-        return { text: cached };
+        try {
+            cachedData = JSON.parse(cached);
+        } catch {
+            // старый формат (просто строка) — преобразуем
+            cachedData = { text: cached, petName: null };
+        }
     }
 
+    // Если кеш есть и имя совпадает с текущим — возвращаем как есть
+    if (cachedData && cachedData.petName === profile.petName) {
+        return { text: cachedData.text };
+    }
+
+    // Если кеш есть, но имя не совпадает — возвращаем старый текст с флагом oldName
+    if (cachedData && cachedData.petName !== profile.petName) {
+        return { text: cachedData.text, oldName: true };
+    }
+
+    // Если кеша нет — генерируем новый
     const horoscope = await generateHoroscopeViaMistral(profile.zodiacSign, profile.petName, profile.petType);
     if (horoscope) {
-        localStorage.setItem(cacheKey, horoscope);
+        const dataToStore = JSON.stringify({ text: horoscope, petName: profile.petName });
+        localStorage.setItem(cacheKey, dataToStore);
         return { text: horoscope };
     } else {
         return { error: 'generation_failed' };
@@ -363,7 +372,11 @@ async function renderHoroscope() {
     } else {
         horoscopeDiv.innerHTML = `<p>${result.text}</p>`;
         const { hours, minutes } = getTimeUntilMidnight();
-        timerDiv.innerHTML = `🔄 Следующий гороскоп через ${hours} ч ${minutes} мин`;
+        if (result.oldName) {
+            timerDiv.innerHTML = `🔄 Новый гороскоп через ${hours} ч ${minutes} мин`;
+        } else {
+            timerDiv.innerHTML = `🔄 Следующий гороскоп через ${hours} ч ${minutes} мин`;
+        }
     }
 }
 
@@ -467,7 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         saveProfile(petName, petType, zodiacSign);
-        clearTodayHoroscopeCache(); // сбрасываем кеш, чтобы гороскоп обновился с новым именем
+        // Примечание: кеш гороскопа не сбрасываем, чтобы сохранить старый текст до завтра
         updateUIBasedOnProfile();
     });
 
@@ -487,7 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Обработка табов (только click, без touchstart)
+    // Обработка табов
     const tabsContainer = document.querySelector('.tabs');
     if (tabsContainer) {
         tabsContainer.addEventListener('click', (e) => {
