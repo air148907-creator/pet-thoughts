@@ -260,6 +260,131 @@ async function renderHoroscope() {
     loadingDiv.classList.add('hidden');
 }
 
+// ==================== НОВАЯ ФУНКЦИЯ ШАРИНГА ГОРОСКОПА ====================
+async function shareHoroscope() {
+    const profile = loadProfile();
+    if (!profile) {
+        alert('Сначала создайте профиль');
+        return;
+    }
+
+    const horoscopeDiv = document.getElementById('horoscopeText');
+    if (!horoscopeDiv) return;
+
+    let horoscopeText = horoscopeDiv.innerText || horoscopeDiv.textContent;
+    // Проверяем, что гороскоп действительно загружен (не плейсхолдер)
+    if (!horoscopeText || 
+        horoscopeText.includes('Сначала укажи свой знак') || 
+        horoscopeText.includes('Не удалось получить') ||
+        horoscopeText.includes('Кот Тимофей составляет')) {
+        alert('Гороскоп ещё не загружен или недоступен');
+        return;
+    }
+
+    // Создаём canvas с изображением для поста
+    const canvas = document.createElement('canvas');
+    canvas.width = 600;
+    canvas.height = 600;
+    const ctx = canvas.getContext('2d');
+
+    // Фон
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#764ba2';
+    ctx.lineWidth = 10;
+    ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+
+    // Заголовок
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 30px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('🔮 Гороскоп на сегодня', canvas.width / 2, 80);
+
+    // Имя питомца
+    ctx.font = 'bold 24px Arial';
+    ctx.fillStyle = '#764ba2';
+    ctx.fillText(`${profile.petName} (${profile.petType})`, canvas.width / 2, 140);
+
+    // Текст гороскопа (с переносом строк)
+    ctx.font = '20px Arial';
+    ctx.fillStyle = '#333';
+    ctx.textAlign = 'left';
+    const words = horoscopeText.split(' ');
+    let line = '';
+    let y = 200;
+    const lineHeight = 30;
+    const maxWidth = 500;
+
+    for (let i = 0; i < words.length; i++) {
+        const testLine = line + words[i] + ' ';
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && i > 0) {
+            ctx.fillText(line, 50, y);
+            line = words[i] + ' ';
+            y += lineHeight;
+        } else {
+            line = testLine;
+        }
+    }
+    ctx.fillText(line, 50, y);
+
+    // Подпись
+    ctx.font = '18px Arial';
+    ctx.fillStyle = '#999';
+    ctx.textAlign = 'center';
+    ctx.fillText('Мысли питомца • vk.com/nash_pitomec', canvas.width / 2, canvas.height - 40);
+
+    // Конвертируем canvas в blob
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+
+    // Получаем URL для загрузки изображения на сервер ВК
+    let uploadUrl;
+    try {
+        const getUploadUrlResult = await bridge.send('VKWebAppGetWallUploadUrl');
+        uploadUrl = getUploadUrlResult.upload_url;
+    } catch (e) {
+        console.error(e);
+        alert('Не удалось получить ссылку для загрузки изображения');
+        return;
+    }
+
+    // Загружаем изображение
+    const formData = new FormData();
+    formData.append('photo', blob, 'horoscope.png');
+
+    let uploadResponse;
+    try {
+        const response = await fetch(uploadUrl, {
+            method: 'POST',
+            body: formData
+        });
+        uploadResponse = await response.json();
+    } catch (e) {
+        console.error(e);
+        alert('Ошибка загрузки изображения');
+        return;
+    }
+
+    if (!uploadResponse.photo) {
+        alert('Не удалось загрузить изображение');
+        return;
+    }
+
+    // Текст для публикации
+    const message = `🔮 Гороскоп для ${profile.petName} (${profile.petType}) на сегодня:\n\n${horoscopeText}\n\n#МыслиПитомца`;
+
+    // Открываем окно публикации на стене
+    try {
+        await bridge.send('VKWebAppShowWallPostBox', {
+            message: message,
+            attachments: uploadResponse.photo
+        });
+    } catch (e) {
+        console.error(e);
+        alert('Не удалось открыть окно публикации');
+    }
+}
+
 // ==================== ОБНОВЛЕНИЕ ИНТЕРФЕЙСА ====================
 function updateUIBasedOnProfile() {
     const profile = loadProfile();
@@ -402,4 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 300);
         });
     }
+
+    // НОВЫЙ ОБРАБОТЧИК ДЛЯ КНОПКИ "ПОДЕЛИТЬСЯ ГОРОСКОПОМ"
+    document.getElementById('shareHoroscopeBtn')?.addEventListener('click', shareHoroscope);
 });
