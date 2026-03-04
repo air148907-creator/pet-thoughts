@@ -260,7 +260,7 @@ async function renderHoroscope() {
     loadingDiv.classList.add('hidden');
 }
 
-// ==================== УПРОЩЁННАЯ ФУНКЦИЯ ШАРИНГА ГОРОСКОПА (ТОЛЬКО ТЕКСТ) ====================
+// ==================== ИСПРАВЛЕННАЯ ФУНКЦИЯ ШАРИНГА (VKWebAppShare) ====================
 async function shareHoroscope() {
     const profile = loadProfile();
     if (!profile) {
@@ -284,14 +284,15 @@ async function shareHoroscope() {
     // Формируем текст для публикации (гороскоп + ссылка на приложение)
     const message = `🔮 Гороскоп для моего питомца на сегодня:\n\n${horoscopeText}\n\n#МыслиПитомца\n\n✨ Приложение: vk.com/app54466618`;
 
-    // Открываем окно публикации на стене без вложений
     try {
-        await bridge.send('VKWebAppShowWallPostBox', {
-            message: message
+        // Используем VKWebAppShare для открытия меню "Поделиться"
+        await bridge.send('VKWebAppShare', {
+            link: 'https://vk.com/app54466618',  // ссылка на приложение
+            message: message                      // текст гороскопа
         });
     } catch (e) {
         console.error(e);
-        alert('Не удалось открыть окно публикации');
+        alert('Не удалось открыть окно "Поделиться"');
     }
 }
 
