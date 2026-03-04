@@ -260,7 +260,7 @@ async function renderHoroscope() {
     loadingDiv.classList.add('hidden');
 }
 
-// ==================== НОВАЯ ФУНКЦИЯ ШАРИНГА ГОРОСКОПА ====================
+// ==================== НОВАЯ ФУНКЦИЯ ШАРИНГА ГОРОСКОПА (ОБНОВЛЕНА) ====================
 async function shareHoroscope() {
     const profile = loadProfile();
     if (!profile) {
@@ -300,10 +300,10 @@ async function shareHoroscope() {
     ctx.textAlign = 'center';
     ctx.fillText('🔮 Гороскоп на сегодня', canvas.width / 2, 80);
 
-    // Имя питомца
+    // Имя питомца — теперь общее (не индивидуальное)
     ctx.font = 'bold 24px Arial';
     ctx.fillStyle = '#764ba2';
-    ctx.fillText(`${profile.petName} (${profile.petType})`, canvas.width / 2, 140);
+    ctx.fillText('Мой питомец', canvas.width / 2, 140);
 
     // Текст гороскопа (с переносом строк)
     ctx.font = '20px Arial';
@@ -328,11 +328,11 @@ async function shareHoroscope() {
     }
     ctx.fillText(line, 50, y);
 
-    // Подпись
+    // Подпись с рекламой приложения (ссылка на мини-приложение)
     ctx.font = '18px Arial';
     ctx.fillStyle = '#999';
     ctx.textAlign = 'center';
-    ctx.fillText('Мысли питомца • vk.com/nash_pitomec', canvas.width / 2, canvas.height - 40);
+    ctx.fillText('Мысли питомца • vk.com/app54466618', canvas.width / 2, canvas.height - 40);
 
     // Конвертируем canvas в blob
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -344,7 +344,7 @@ async function shareHoroscope() {
         uploadUrl = getUploadUrlResult.upload_url;
     } catch (e) {
         console.error(e);
-        alert('Не удалось получить ссылку для загрузки изображения');
+        alert('Не удалось получить ссылку для загрузки изображения.\n\nПопробуйте ещё раз или поделитесь вручную: скопируйте текст гороскопа.');
         return;
     }
 
@@ -370,8 +370,8 @@ async function shareHoroscope() {
         return;
     }
 
-    // Текст для публикации
-    const message = `🔮 Гороскоп для ${profile.petName} (${profile.petType}) на сегодня:\n\n${horoscopeText}\n\n#МыслиПитомца`;
+    // Текст для публикации (с ссылкой на приложение)
+    const message = `🔮 Гороскоп для моего питомца на сегодня:\n\n${horoscopeText}\n\n#МыслиПитомца\n\n✨ Приложение: vk.com/app54466618`;
 
     // Открываем окно публикации на стене
     try {
