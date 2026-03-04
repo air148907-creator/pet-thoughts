@@ -7,7 +7,7 @@ const APP_ID = 54466618;
 const STORAGE_KEY = 'petProfile';
 const CHAT_HISTORY_KEY = 'chatHistory';
 
-// Кэш для системного промпта чата (чтобы не пересобирать при каждом сообщении)
+// Кэш для системного промпта чата
 let cachedSystemPrompt = '';
 
 // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
@@ -19,7 +19,6 @@ function getTodayDateString() {
 function saveProfile(name, type, zodiacSign) {
     const profile = { petName: name, petType: type, zodiacSign: zodiacSign };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
-    // При изменении профиля сбрасываем кэш промпта чата, но гороскоп не трогаем
     cachedSystemPrompt = '';
 }
 
@@ -88,13 +87,12 @@ async function sendToMistral(userMessage) {
     const profile = loadProfile();
     if (!profile) return null;
 
-    // Генерируем системный промпт только если профиль изменился
     if (!cachedSystemPrompt || !cachedSystemPrompt.includes(profile.petName) || !cachedSystemPrompt.includes(profile.petType)) {
         cachedSystemPrompt = `Ты — Мафия, ${profile.petType} (питомец). Ты отвечаешь коротко, весело, с юмором, от первого лица. Используй имя хозяина: "${profile.petName}". Пиши как забавный питомец, который немного очеловечен. Не используй markdown, просто текст.`;
     }
 
     const history = loadChatHistory();
-    const recent = history.slice(-6); // последние 6 сообщений для контекста
+    const recent = history.slice(-6);
 
     const messages = [
         { role: 'system', content: cachedSystemPrompt },
@@ -193,11 +191,9 @@ async function getHoroscopeForToday() {
     }
 
     const today = getTodayDateString();
-    // КЛЮЧ КЭША ТОЛЬКО ПО ДАТЕ — гороскоп обновляется раз в сутки
     const cacheKey = `horoscope_${today}`;
     const cached = localStorage.getItem(cacheKey);
 
-    // Если есть кэш на сегодня, возвращаем его (даже если профиль изменился)
     if (cached) {
         try {
             const parsed = JSON.parse(cached);
@@ -205,7 +201,6 @@ async function getHoroscopeForToday() {
         } catch {}
     }
 
-    // Если кэша нет, генерируем новый гороскоп с текущим профилем
     const horoscope = await generateHoroscopeViaMistral(profile.zodiacSign, profile.petName, profile.petType);
     if (horoscope) {
         localStorage.setItem(cacheKey, JSON.stringify({ text: horoscope, petName: profile.petName }));
@@ -232,7 +227,6 @@ async function renderHoroscope() {
     const cacheKey = `horoscope_${today}`;
     const cached = localStorage.getItem(cacheKey);
 
-    // Если есть кэш, показываем его сразу
     if (cached) {
         try {
             const parsed = JSON.parse(cached);
@@ -244,13 +238,11 @@ async function renderHoroscope() {
             timerDiv.innerHTML = '';
         }
     } else {
-        // Кэша нет — показываем загрузку
         horoscopeDiv.innerHTML = '';
         timerDiv.innerHTML = '';
         loadingDiv.classList.remove('hidden');
     }
 
-    // В любом случае проверяем актуальность (но из-за ключа по дате это будет тот же кэш)
     const result = await getHoroscopeForToday();
 
     if (result.error === 'generation_failed') {
@@ -258,7 +250,6 @@ async function renderHoroscope() {
             horoscopeDiv.innerHTML = '<p class="horoscope-placeholder">😿 Не удалось получить гороскоп. Попробуй позже.</p>';
         }
     } else if (!result.error) {
-        // Если результат свежий (не из кэша) или кэша не было, обновляем
         if (!result.fromCache || !horoscopeDiv.innerHTML.trim()) {
             horoscopeDiv.innerHTML = `<p>${result.text}</p>`;
         }
@@ -278,7 +269,6 @@ function updateUIBasedOnProfile() {
     const petInfoDisplay = document.getElementById('petInfoDisplay');
 
     if (!profile) {
-        // Показываем экран создания профиля
         loadingScreen.classList.add('hidden');
         profileScreen.classList.remove('hidden');
         mainInterface.classList.add('hidden');
@@ -287,17 +277,14 @@ function updateUIBasedOnProfile() {
         document.getElementById('zodiacSign').value = '';
         document.getElementById('profileTitle').textContent = '🫵 Кто тут у нас?';
     } else {
-        // Профиль есть — показываем основной интерфейс
         loadingScreen.classList.add('hidden');
         profileScreen.classList.add('hidden');
         mainInterface.classList.remove('hidden');
 
         petInfoDisplay.textContent = `${profile.petType} ${profile.petName}`;
 
-        // Рендерим чат, если он будет открыт
         renderChatMessages();
 
-        // Если активна вкладка гороскопа, обновляем его
         if (document.getElementById('horoscopeTab').classList.contains('active')) {
             renderHoroscope();
         }
@@ -339,10 +326,8 @@ function switchTab(tabName) {
 
 // ==================== ОБРАБОТЧИКИ СОБЫТИЙ ====================
 document.addEventListener('DOMContentLoaded', () => {
-    // Сразу проверяем профиль и показываем нужный экран (без задержки)
     updateUIBasedOnProfile();
 
-    // Сохранение профиля
     document.getElementById('saveProfileBtn')?.addEventListener('click', () => {
         const petName = document.getElementById('petName')?.value.trim();
         const petType = document.getElementById('petType')?.value;
@@ -359,10 +344,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         saveProfile(petName, petType, zodiacSign);
         updateUIBasedOnProfile();
-        switchTab('thoughts'); // после сохранения переходим на приветствие
+        switchTab('thoughts');
     });
 
-    // Редактирование профиля
     document.getElementById('editProfileBtn')?.addEventListener('click', () => {
         const profile = loadProfile();
         if (profile) {
@@ -378,14 +362,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Кнопка открытия сообщества
-    document.getElementById('openCommunityBtn')?.addEventListener('click', () => {
-        bridge.send('VKWebAppOpenLink', { url: 'https://vk.com/nash_pitomec' }).catch(() => {
-            window.open('https://vk.com/nash_pitomec', '_blank');
-        });
+    // ИСПРАВЛЕНО: всегда открываем ссылку через window.open, без VK Bridge
+    document.getElementById('openCommunityBtn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.open('https://vk.com/nash_pitomec', '_blank');
     });
 
-    // Переключение табов
     const tabsContainer = document.querySelector('.tabs');
     if (tabsContainer) {
         tabsContainer.addEventListener('click', (e) => {
@@ -398,26 +380,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Чат: отправка
     document.getElementById('sendChatBtn')?.addEventListener('click', handleChatSend);
     document.getElementById('chatInput')?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleChatSend();
     });
 
-    // Кнопка очистки чата
+    // ИСПРАВЛЕНО: убран touchend, оставлен только click с preventDefault
     const clearBtn = document.getElementById('clearChatBtn');
     if (clearBtn) {
         clearBtn.addEventListener('click', (e) => {
             e.preventDefault();
             clearChatHistory();
         });
-        clearBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            clearChatHistory();
-        });
     }
 
-    // Прокрутка при фокусе поля ввода
     const chatInput = document.getElementById('chatInput');
     if (chatInput) {
         chatInput.addEventListener('focus', () => {
