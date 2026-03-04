@@ -260,7 +260,7 @@ async function renderHoroscope() {
     loadingDiv.classList.add('hidden');
 }
 
-// ==================== УПРОЩЁННАЯ ФУНКЦИЯ ШАРИНГА ГОРОСКОПА (БЕЗ ИЗОБРАЖЕНИЯ) ====================
+// ==================== УПРОЩЁННАЯ ФУНКЦИЯ ШАРИНГА ГОРОСКОПА (ТОЛЬКО ТЕКСТ) ====================
 async function shareHoroscope() {
     const profile = loadProfile();
     if (!profile) {

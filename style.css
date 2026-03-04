@@ -11,7 +11,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    touch-action: pan-y; /* предотвращает зумирование двойным касанием */
+    touch-action: pan-y;
 }
 
 .app-container {
@@ -27,7 +27,6 @@ body {
     position: relative;
 }
 
-/* Экран загрузки */
 .loading-screen {
     display: flex;
     flex-direction: column;
@@ -51,7 +50,6 @@ body {
     100% { transform: rotate(360deg); }
 }
 
-/* Экран профиля */
 .profile-screen {
     padding: 40px 25px;
     height: 600px;
@@ -123,7 +121,6 @@ body {
     transform: scale(0.98);
 }
 
-/* Основной интерфейс */
 .main-interface {
     display: flex;
     flex-direction: column;
@@ -161,7 +158,6 @@ body {
     background: #f0f0f0;
 }
 
-/* Табы */
 .tabs {
     display: flex;
     gap: 10px;
@@ -199,7 +195,6 @@ body {
     display: block;
 }
 
-/* Таб "Мысли" */
 .thought-card {
     display: flex;
     align-items: center;
@@ -260,7 +255,6 @@ body {
     margin-top: 15px;
 }
 
-/* ========== ЧАТ — ПОЛНОСТЬЮ ИСПРАВЛЕНО ========== */
 .chat-wrapper {
     display: flex;
     flex-direction: column;
@@ -280,7 +274,6 @@ body {
     -webkit-overflow-scrolling: touch;
 }
 
-/* Панель ввода: отступы, скруглённые углы */
 .chat-input-wrapper {
     flex: 0 0 auto;
     padding: 12px 16px 16px 16px;
@@ -298,16 +291,15 @@ body {
     gap: 8px;
 }
 
-/* Поле ввода */
 #chatInput {
     flex: 1;
-    height: 48px;               /* строго фиксированная высота */
+    height: 48px;
     min-width: 120px;
-    padding: 0 18px;             /* горизонтальные отступы, вертикальные убраны */
+    padding: 0 18px;
     border: 2px solid #e0e0e0;
     border-radius: 9999px;
     font-size: 16px;
-    line-height: 44px;           /* 48px - (2px border * 2) = 44px */
+    line-height: 44px;
     box-sizing: border-box;
     background: white;
 }
@@ -317,10 +309,9 @@ body {
     outline: none;
 }
 
-/* Кнопки */
 .send-btn,
 .clear-chat-btn {
-    position: relative;          /* для псевдоэлемента области касания */
+    position: relative;
     width: 48px;
     height: 48px;
     border-radius: 50%;
@@ -333,7 +324,7 @@ body {
     flex-shrink: 0;
     padding: 0;
     line-height: 1;
-    touch-action: manipulation;  /* отключает двойной тап-зум */
+    touch-action: manipulation;
     background: transparent;
     transition: opacity 0.2s, transform 0.1s;
 }
@@ -348,7 +339,6 @@ body {
     color: #555;
 }
 
-/* Увеличенная область касания (только для мобильных) */
 .send-btn::after,
 .clear-chat-btn::after {
     content: '';
@@ -359,7 +349,7 @@ body {
     bottom: -8px;
     border-radius: 50%;
     background: transparent;
-    pointer-events: none;        /* не перехватывает клики, но увеличивает область нажатия */
+    pointer-events: none;
 }
 
 .send-btn:active,
@@ -368,7 +358,6 @@ body {
     transform: scale(0.96);
 }
 
-/* Сообщения чата */
 .chat-message {
     max-width: 80%;
     padding: 10px 15px;
@@ -396,7 +385,6 @@ body {
     color: #999;
 }
 
-/* Гороскоп */
 .horoscope-text {
     white-space: pre-wrap;
     word-break: break-word;
