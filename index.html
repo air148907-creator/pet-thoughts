@@ -64,21 +64,23 @@
             </div>
 
             <div class="tabs">
-                <button class="tab-btn active" id="tabThoughts">💭 Мысли</button>
+                <button class="tab-btn active" id="tabThoughts">💭 Приветствие</button>
                 <button class="tab-btn" id="tabChat">💬 Чат с Мафией</button>
                 <button class="tab-btn" id="tabHoroscope">🔮 Гороскоп</button>
             </div>
 
+            <!-- Вкладка "Приветствие" (ранее "Мысли") -->
             <div class="tab-content active" id="thoughtsTab">
-                <div class="thought-card">
-                    <div class="thought-bubble" id="thoughtText"></div>
-                </div>
-                <div class="actions">
-                    <button class="vk-button share-button" id="shareButton">Поделиться мыслью 📤</button>
-                    <p class="update-note" id="updateNote"></p>
+                <div style="padding: 30px 20px; text-align: center;">
+                    <h2 style="font-size: 28px; margin-bottom: 15px;">Привет, друг! 👋</h2>
+                    <p style="font-size: 18px; margin-bottom: 30px; color: #555;">
+                        Заходи в наше официальное сообщество — там много интересного для тебя и твоего питомца!
+                    </p>
+                    <button class="vk-button" id="openCommunityBtn" style="background: #2A5885;">Перейти в сообщество</button>
                 </div>
             </div>
 
+            <!-- Вкладка чата -->
             <div class="tab-content" id="chatTab">
                 <div class="chat-wrapper">
                     <div class="chat-messages" id="chatMessages"></div>
@@ -92,6 +94,7 @@
                 </div>
             </div>
 
+            <!-- Вкладка гороскопа -->
             <div class="tab-content" id="horoscopeTab">
                 <div class="horoscope-container" style="padding: 15px;">
                     <div id="horoscopeText" class="horoscope-text" style="font-size: 18px; line-height: 1.5; background: #f0f0f0; border-radius: 20px; padding: 25px; min-height: 200px;">

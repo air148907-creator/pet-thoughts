@@ -1,36 +1,14 @@
 // Инициализация VK Bridge
 const bridge = window.vkBridge;
-bridge.send('VKWebAppInit');
+bridge.send('VKWebAppInit').catch(() => {});
 
 // ==================== КОНСТАНТЫ ====================
 const APP_ID = 54466618;
-
-const thoughtsDB = [
-    "Сегодня я буду игнорировать тебя ровно до 18:00, потом приду проситься на ручки. Это закон.",
-    "Я слышал, как ты открывал(а) холодильник. Жду отчётности в виде вкусняшки.",
-    "Соседская кошка снова на меня косо смотрит. Надо будет громко поорать ночью в знак протеста.",
-    "Твой диван пахнет странно. Я его немного пометил(а), чтобы было как надо.",
-    "Поставь, пожалуйста, этот ящик (ноутбук) на пол. Я хочу на нём посидеть.",
-    "Уровень милоты сегодня зашкаливает. Готовь лакомства.",
-    "Мне кажется, или ты забыл(а) купить корм? Я перерою всю квартиру в поисках доказательств.",
-    "План на день: спать, есть, смотреть в окно, спать, немного побесить тебя в 6 утра.",
-    "Я точно знаю, где ты спрятал(а) конфеты. Молчу, молчу... А что мне за это будет?",
-    "Твоя подушка пахнет тобой. Я её немножко замурчал(а)/затоптал(а).",
-    "Сегодня я чувствую себя хищником. Этот муравей на полу сильно поплатится.",
-    "Ты слишком долго смотришь в телефон. Иди лучше почеши меня за ушком.",
-    "Мне приснился сон, что ты даёшь мне много-много вкусняшек. Сделай этот сон реальностью.",
-    "Этот пакет шуршит! Я должен(на) его проверить. Это инстинкт.",
-    "Давай сегодня просто полежим и ничего не будем делать? Я составлю компанию.",
-    "Ты надолго уходишь? Я планирую устроить небольшой беспорядок от скуки.",
-    "Я сегодня не просто питомец, я — котролёр/собаконтролёр качества твоего отдыха.",
-    "Мой язык — моё оружие. Сейчас я буду тебя вылизывать, и ты не посмеешь сопротивляться.",
-    "Вода в миске стоит уже целых 2 часа. Это не свежак! Требую замены.",
-    "Тот желтый банан на столе выглядит подозрительно. Я его изучу, когда ты отвернешься."
-];
-
 const STORAGE_KEY = 'petProfile';
-const THOUGHT_KEY = 'lastThought';
 const CHAT_HISTORY_KEY = 'chatHistory';
+
+// Кэш для системного промпта чата (чтобы не пересобирать при каждом сообщении)
+let cachedSystemPrompt = '';
 
 // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 function getTodayDateString() {
@@ -38,135 +16,16 @@ function getTodayDateString() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function getThoughtIndexForToday(petName, petType) {
-    const today = getTodayDateString();
-    const seed = petName + petType + today;
-    let hash = 0;
-    for (let i = 0; i < seed.length; i++) {
-        hash = ((hash << 5) - hash) + seed.charCodeAt(i);
-        hash |= 0;
-    }
-    return Math.abs(hash) % thoughtsDB.length;
-}
-
 function saveProfile(name, type, zodiacSign) {
     const profile = { petName: name, petType: type, zodiacSign: zodiacSign };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+    // При изменении профиля сбрасываем кэш промпта чата, но гороскоп не трогаем
+    cachedSystemPrompt = '';
 }
 
 function loadProfile() {
     const profile = localStorage.getItem(STORAGE_KEY);
     return profile ? JSON.parse(profile) : null;
-}
-
-// ==================== ГЕНЕРАЦИЯ КАРТИНКИ ====================
-function generateThoughtImage(thought, petName, petType) {
-    return new Promise((resolve) => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 800;
-        canvas.height = 800;
-        const ctx = canvas.getContext('2d');
-
-        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-        gradient.addColorStop(0, '#667eea');
-        gradient.addColorStop(1, '#764ba2');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.fillStyle = 'white';
-        ctx.shadowColor = 'rgba(0,0,0,0.3)';
-        ctx.shadowBlur = 20;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 10;
-        ctx.beginPath();
-        ctx.roundRect(80, 200, 640, 400, 40);
-        ctx.fill();
-        ctx.shadowColor = 'transparent';
-
-        ctx.fillStyle = '#333';
-        ctx.font = 'bold 36px "Arial", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        const maxWidth = 550;
-        const words = thought.split(' ');
-        let lines = [];
-        let currentLine = words[0];
-        for (let i = 1; i < words.length; i++) {
-            const testLine = currentLine + ' ' + words[i];
-            const metrics = ctx.measureText(testLine);
-            if (metrics.width > maxWidth) {
-                lines.push(currentLine);
-                currentLine = words[i];
-            } else {
-                currentLine = testLine;
-            }
-        }
-        lines.push(currentLine);
-
-        ctx.font = '32px "Arial", sans-serif';
-        let y = 380;
-        lines.forEach(line => {
-            ctx.fillText(line, canvas.width / 2, y);
-            y += 50;
-        });
-
-        ctx.font = '28px "Arial", sans-serif';
-        ctx.fillStyle = '#555';
-        ctx.fillText(`— ${petType} ${petName}`, canvas.width / 2, 600);
-
-        ctx.font = '24px "Arial", sans-serif';
-        ctx.fillStyle = '#999';
-        ctx.fillText(`vk.com/app${APP_ID}`, canvas.width / 2, 700);
-
-        canvas.toBlob(resolve, 'image/png');
-    });
-}
-
-CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
-    if (w < 2 * r) r = w / 2;
-    if (h < 2 * r) r = h / 2;
-    this.moveTo(x + r, y);
-    this.lineTo(x + w - r, y);
-    this.quadraticCurveTo(x + w, y, x + w, y + r);
-    this.lineTo(x + w, y + h - r);
-    this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    this.lineTo(x + r, y + h);
-    this.quadraticCurveTo(x, y + h, x, y + h - r);
-    this.lineTo(x, y + r);
-    this.quadraticCurveTo(x, y, x + r, y);
-    return this;
-};
-
-// ==================== ФУНКЦИИ ЗАГРУЗКИ ФОТО В ВК ====================
-async function getWallUploadServer() {
-    const result = await bridge.send('VKWebAppCallAPIMethod', {
-        method: 'photos.getWallUploadServer',
-        params: { v: '5.131' }
-    });
-    return result.response.upload_url;
-}
-
-async function uploadPhotoToServer(uploadUrl, blob) {
-    const formData = new FormData();
-    formData.append('photo', blob, 'thought.png');
-    const response = await fetch(uploadUrl, { method: 'POST', body: formData });
-    return response.json();
-}
-
-async function saveWallPhoto(server, photo, hash) {
-    const result = await bridge.send('VKWebAppCallAPIMethod', {
-        method: 'photos.saveWallPhoto',
-        params: { server, photo, hash, v: '5.131' }
-    });
-    const saved = result.response[0];
-    return `photo${saved.owner_id}_${saved.id}`;
-}
-
-async function uploadWallPhoto(blob) {
-    const uploadUrl = await getWallUploadServer();
-    const uploadResult = await uploadPhotoToServer(uploadUrl, blob);
-    return await saveWallPhoto(uploadResult.server, uploadResult.photo, uploadResult.hash);
 }
 
 // ==================== ФУНКЦИИ ЧАТА ====================
@@ -210,17 +69,11 @@ function renderChatMessages() {
     scrollChatToBottom(false);
 }
 
-// Улучшенная функция очистки с обработкой мобильных устройств
 function clearChatHistory() {
-    // Используем стандартный confirm, но оборачиваем в try-catch на случай блокировки в webview
     let confirmed = false;
     try {
         confirmed = confirm('Очистить всю историю сообщений?');
     } catch (e) {
-        console.warn('confirm не сработал, используем альтернативу');
-        // Если confirm заблокирован (редко), можно показать просто alert и спросить через кастомный диалог,
-        // но для простоты предложим альтернативу: очищаем без подтверждения? Лучше не надо.
-        // Вместо этого используем простой alert и выходим:
         alert('Очистка временно недоступна. Попробуйте позже.');
         return;
     }
@@ -235,13 +88,16 @@ async function sendToMistral(userMessage) {
     const profile = loadProfile();
     if (!profile) return null;
 
-    const systemPrompt = `Ты — Мафия, ${profile.petType} (питомец). Ты отвечаешь коротко, весело, с юмором, от первого лица. Используй имя хозяина: "${profile.petName}". Пиши как забавный питомец, который немного очеловечен. Не используй markdown, просто текст.`;
+    // Генерируем системный промпт только если профиль изменился
+    if (!cachedSystemPrompt || !cachedSystemPrompt.includes(profile.petName) || !cachedSystemPrompt.includes(profile.petType)) {
+        cachedSystemPrompt = `Ты — Мафия, ${profile.petType} (питомец). Ты отвечаешь коротко, весело, с юмором, от первого лица. Используй имя хозяина: "${profile.petName}". Пиши как забавный питомец, который немного очеловечен. Не используй markdown, просто текст.`;
+    }
 
     const history = loadChatHistory();
-    const recent = history.slice(-6);
+    const recent = history.slice(-6); // последние 6 сообщений для контекста
 
     const messages = [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: cachedSystemPrompt },
         ...recent.map(m => ({ role: m.role, content: m.content })),
         { role: 'user', content: userMessage }
     ];
@@ -337,20 +193,23 @@ async function getHoroscopeForToday() {
     }
 
     const today = getTodayDateString();
-    const cacheKey = `horoscope_${profile.zodiacSign}_${today}`;
+    // КЛЮЧ КЭША ТОЛЬКО ПО ДАТЕ — гороскоп обновляется раз в сутки
+    const cacheKey = `horoscope_${today}`;
     const cached = localStorage.getItem(cacheKey);
 
+    // Если есть кэш на сегодня, возвращаем его (даже если профиль изменился)
     if (cached) {
         try {
             const parsed = JSON.parse(cached);
-            return { text: parsed.text || parsed };
+            return { text: parsed.text || parsed, fromCache: true };
         } catch {}
     }
 
+    // Если кэша нет, генерируем новый гороскоп с текущим профилем
     const horoscope = await generateHoroscopeViaMistral(profile.zodiacSign, profile.petName, profile.petType);
     if (horoscope) {
         localStorage.setItem(cacheKey, JSON.stringify({ text: horoscope, petName: profile.petName }));
-        return { text: horoscope };
+        return { text: horoscope, fromCache: false };
     }
     return { error: 'generation_failed' };
 }
@@ -361,24 +220,53 @@ async function renderHoroscope() {
     const timerDiv = document.getElementById('horoscopeTimer');
     if (!horoscopeDiv || !loadingDiv || !timerDiv) return;
 
-    horoscopeDiv.classList.add('hidden');
-    loadingDiv.classList.remove('hidden');
-    timerDiv.innerHTML = '';
+    const profile = loadProfile();
+    if (!profile || !profile.zodiacSign) {
+        horoscopeDiv.innerHTML = '<p class="horoscope-placeholder">✨ Сначала укажи свой знак зодиака в настройках профиля (нажми ✏️).</p>';
+        timerDiv.innerHTML = '';
+        loadingDiv.classList.add('hidden');
+        return;
+    }
 
+    const today = getTodayDateString();
+    const cacheKey = `horoscope_${today}`;
+    const cached = localStorage.getItem(cacheKey);
+
+    // Если есть кэш, показываем его сразу
+    if (cached) {
+        try {
+            const parsed = JSON.parse(cached);
+            horoscopeDiv.innerHTML = `<p>${parsed.text || parsed}</p>`;
+            const { hours, minutes } = getTimeUntilMidnight();
+            timerDiv.innerHTML = `🔄 Новый гороскоп через ${hours} ч ${minutes} мин`;
+        } catch (e) {
+            horoscopeDiv.innerHTML = '';
+            timerDiv.innerHTML = '';
+        }
+    } else {
+        // Кэша нет — показываем загрузку
+        horoscopeDiv.innerHTML = '';
+        timerDiv.innerHTML = '';
+        loadingDiv.classList.remove('hidden');
+    }
+
+    // В любом случае проверяем актуальность (но из-за ключа по дате это будет тот же кэш)
     const result = await getHoroscopeForToday();
 
-    loadingDiv.classList.add('hidden');
-    horoscopeDiv.classList.remove('hidden');
-
-    if (result.error === 'no_zodiac') {
-        horoscopeDiv.innerHTML = '<p class="horoscope-placeholder">✨ Сначала укажи свой знак зодиака в настройках профиля (нажми ✏️).</p>';
-    } else if (result.error === 'generation_failed') {
-        horoscopeDiv.innerHTML = '<p class="horoscope-placeholder">😿 Не удалось получить гороскоп. Попробуй позже.</p>';
-    } else {
-        horoscopeDiv.innerHTML = `<p>${result.text}</p>`;
+    if (result.error === 'generation_failed') {
+        if (!horoscopeDiv.innerHTML.trim()) {
+            horoscopeDiv.innerHTML = '<p class="horoscope-placeholder">😿 Не удалось получить гороскоп. Попробуй позже.</p>';
+        }
+    } else if (!result.error) {
+        // Если результат свежий (не из кэша) или кэша не было, обновляем
+        if (!result.fromCache || !horoscopeDiv.innerHTML.trim()) {
+            horoscopeDiv.innerHTML = `<p>${result.text}</p>`;
+        }
         const { hours, minutes } = getTimeUntilMidnight();
         timerDiv.innerHTML = `🔄 Новый гороскоп через ${hours} ч ${minutes} мин`;
     }
+
+    loadingDiv.classList.add('hidden');
 }
 
 // ==================== ОБНОВЛЕНИЕ ИНТЕРФЕЙСА ====================
@@ -388,10 +276,9 @@ function updateUIBasedOnProfile() {
     const profileScreen = document.getElementById('profileScreen');
     const mainInterface = document.getElementById('mainInterface');
     const petInfoDisplay = document.getElementById('petInfoDisplay');
-    const thoughtText = document.getElementById('thoughtText');
-    const updateNote = document.getElementById('updateNote');
 
     if (!profile) {
+        // Показываем экран создания профиля
         loadingScreen.classList.add('hidden');
         profileScreen.classList.remove('hidden');
         mainInterface.classList.add('hidden');
@@ -400,27 +287,20 @@ function updateUIBasedOnProfile() {
         document.getElementById('zodiacSign').value = '';
         document.getElementById('profileTitle').textContent = '🫵 Кто тут у нас?';
     } else {
+        // Профиль есть — показываем основной интерфейс
         loadingScreen.classList.add('hidden');
         profileScreen.classList.add('hidden');
         mainInterface.classList.remove('hidden');
 
         petInfoDisplay.textContent = `${profile.petType} ${profile.petName}`;
 
-        const thoughtIndex = getThoughtIndexForToday(profile.petName, profile.petType);
-        const thought = thoughtsDB[thoughtIndex];
-        thoughtText.textContent = `${profile.petName}: ${thought}`;
-
-        const lastThoughtData = localStorage.getItem(THOUGHT_KEY);
-        const today = getTodayDateString();
-        if (lastThoughtData) {
-            const lastData = JSON.parse(lastThoughtData);
-            updateNote.textContent = (lastData.date === today) ? 'Мысль на сегодня (уже смотрели)' : 'Сегодня новая мысль! ✨';
-        } else {
-            updateNote.textContent = 'Сегодня новая мысль! ✨';
-        }
-        localStorage.setItem(THOUGHT_KEY, JSON.stringify({ date: today, thought }));
-
+        // Рендерим чат, если он будет открыт
         renderChatMessages();
+
+        // Если активна вкладка гороскопа, обновляем его
+        if (document.getElementById('horoscopeTab').classList.contains('active')) {
+            renderHoroscope();
+        }
     }
 }
 
@@ -459,12 +339,10 @@ function switchTab(tabName) {
 
 // ==================== ОБРАБОТЧИКИ СОБЫТИЙ ====================
 document.addEventListener('DOMContentLoaded', () => {
-    bridge.send('VKWebAppGetUserInfo').catch(() => {});
+    // Сразу проверяем профиль и показываем нужный экран (без задержки)
+    updateUIBasedOnProfile();
 
-    setTimeout(() => {
-        updateUIBasedOnProfile();
-    }, 500);
-
+    // Сохранение профиля
     document.getElementById('saveProfileBtn')?.addEventListener('click', () => {
         const petName = document.getElementById('petName')?.value.trim();
         const petType = document.getElementById('petType')?.value;
@@ -481,8 +359,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         saveProfile(petName, petType, zodiacSign);
         updateUIBasedOnProfile();
+        switchTab('thoughts'); // после сохранения переходим на приветствие
     });
 
+    // Редактирование профиля
     document.getElementById('editProfileBtn')?.addEventListener('click', () => {
         const profile = loadProfile();
         if (profile) {
@@ -498,6 +378,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Кнопка открытия сообщества
+    document.getElementById('openCommunityBtn')?.addEventListener('click', () => {
+        bridge.send('VKWebAppOpenLink', { url: 'https://vk.com/nash_pitomec' }).catch(() => {
+            window.open('https://vk.com/nash_pitomec', '_blank');
+        });
+    });
+
+    // Переключение табов
     const tabsContainer = document.querySelector('.tabs');
     if (tabsContainer) {
         tabsContainer.addEventListener('click', (e) => {
@@ -510,79 +398,32 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    document.getElementById('shareButton')?.addEventListener('click', async () => {
-        const profile = loadProfile();
-        if (!profile) return;
-
-        const thoughtElement = document.getElementById('thoughtText');
-        if (!thoughtElement) return;
-        const thoughtText = thoughtElement.textContent;
-
-        const imageBlob = await generateThoughtImage(thoughtText, profile.petName, profile.petType);
-
-        try {
-            await bridge.send('VKWebAppGetAuthToken', { app_id: APP_ID, scope: 'photos' });
-        } catch (e) {
-            alert('Нужен доступ к фото для публикации');
-            return;
-        }
-
-        let attachment;
-        try {
-            attachment = await uploadWallPhoto(imageBlob);
-        } catch (e) {
-            console.error('Ошибка загрузки фото:', e);
-            alert('Не удалось загрузить изображение');
-            return;
-        }
-
-        const shareText = `😄 ${profile.petName} сегодня думает:\n\n${thoughtText}\n\n👉 Узнай мысли своего питомца каждый день!`;
-        const link = `https://vk.com/app${APP_ID}`;
-
-        bridge.send('VKWebAppShowWallPostBox', {
-            message: shareText,
-            attachments: `${attachment},${link}`
-        }).catch(error => {
-            console.error('Ошибка при открытии окна поста:', error);
-            alert('Не удалось открыть окно публикации. Но вот твоя мысль: ' + thoughtText);
-        });
-    });
-
+    // Чат: отправка
     document.getElementById('sendChatBtn')?.addEventListener('click', handleChatSend);
     document.getElementById('chatInput')?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleChatSend();
     });
 
-    // ========== УЛУЧШЕННАЯ ОБРАБОТКА КНОПКИ ОЧИСТКИ ==========
+    // Кнопка очистки чата
     const clearBtn = document.getElementById('clearChatBtn');
     if (clearBtn) {
-        // Обработчик для мыши/касаний (click)
         clearBtn.addEventListener('click', (e) => {
-            e.preventDefault(); // на всякий случай
+            e.preventDefault();
             clearChatHistory();
         });
-
-        // Специально для мобильных устройств (iPhone и др.) - обработка touchend
         clearBtn.addEventListener('touchend', (e) => {
-            e.preventDefault(); // предотвращаем возможную прокрутку или масштабирование
+            e.preventDefault();
             clearChatHistory();
         });
-
-        // Дополнительно: подавляем двойной вызов, но в нашей функции clearChatHistory это безопасно
     }
 
-    // Улучшаем поведение при фокусе поля ввода (чтобы панель не перекрывалась клавиатурой)
+    // Прокрутка при фокусе поля ввода
     const chatInput = document.getElementById('chatInput');
     if (chatInput) {
         chatInput.addEventListener('focus', () => {
-            // Даём время клавиатуре появиться, затем прокручиваем панель ввода в видимую зону
             setTimeout(() => {
                 chatInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }, 300);
         });
     }
-
-    document.getElementById('chatInput')?.addEventListener('focus', () => {
-        setTimeout(() => scrollChatToBottom(true), 300);
-    });
 });
