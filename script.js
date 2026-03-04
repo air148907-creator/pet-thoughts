@@ -260,7 +260,26 @@ async function renderHoroscope() {
     loadingDiv.classList.add('hidden');
 }
 
-// ==================== ИСПРАВЛЕННАЯ ФУНКЦИЯ ШАРИНГА (VKWebAppShare) ====================
+// ==================== УЛУЧШЕННАЯ ФУНКЦИЯ ШАРИНГА (ПОДДЕРЖКА FALLBACK) ====================
+function fallbackCopy(text) {
+    // Пытаемся скопировать в буфер обмена
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            alert('✅ Текст скопирован в буфер обмена!\n\nТеперь вы можете вставить его в чат, на стену или в историю.');
+        } else {
+            alert('❌ Не удалось скопировать. Вот текст:\n\n' + text);
+        }
+    } catch (err) {
+        alert('❌ Ошибка копирования. Вот текст:\n\n' + text);
+    }
+    document.body.removeChild(textarea);
+}
+
 async function shareHoroscope() {
     const profile = loadProfile();
     if (!profile) {
@@ -282,17 +301,25 @@ async function shareHoroscope() {
     }
 
     // Формируем текст для публикации (гороскоп + ссылка на приложение)
-    const message = `🔮 Гороскоп для моего питомца на сегодня:\n\n${horoscopeText}\n\n#МыслиПитомца\n\n✨ Приложение: vk.com/app54466618`;
+    const fullMessage = `🔮 Гороскоп для моего питомца на сегодня:\n\n${horoscopeText}\n\n#МыслиПитомца\n\n✨ Приложение: vk.com/app54466618`;
 
+    // Пытаемся открыть нативное окно "Поделиться" ВКонтакте
     try {
-        // Используем VKWebAppShare для открытия меню "Поделиться"
-        await bridge.send('VKWebAppShare', {
-            link: 'https://vk.com/app54466618',  // ссылка на приложение
-            message: message                      // текст гороскопа
-        });
+        // Проверяем, поддерживается ли метод VKWebAppShare
+        if (bridge.supports && typeof bridge.supports === 'function' && bridge.supports('VKWebAppShare')) {
+            await bridge.send('VKWebAppShare', {
+                link: 'https://vk.com/app54466618',
+                message: fullMessage
+            });
+            return; // Успешно поделились
+        } else {
+            // Метод не поддерживается (например, запуск вне ВК) — копируем в буфер
+            fallbackCopy(fullMessage);
+        }
     } catch (e) {
-        console.error(e);
-        alert('Не удалось открыть окно "Поделиться"');
+        console.error('Ошибка VKWebAppShare:', e);
+        // Если произошла ошибка, тоже копируем в буфер
+        fallbackCopy(fullMessage);
     }
 }
 
