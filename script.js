@@ -260,7 +260,7 @@ async function renderHoroscope() {
     loadingDiv.classList.add('hidden');
 }
 
-// ==================== НОВАЯ ФУНКЦИЯ ШАРИНГА ГОРОСКОПА (ОБНОВЛЕНА) ====================
+// ==================== УПРОЩЁННАЯ ФУНКЦИЯ ШАРИНГА ГОРОСКОПА (БЕЗ ИЗОБРАЖЕНИЯ) ====================
 async function shareHoroscope() {
     const profile = loadProfile();
     if (!profile) {
@@ -281,103 +281,13 @@ async function shareHoroscope() {
         return;
     }
 
-    // Создаём canvas с изображением для поста
-    const canvas = document.createElement('canvas');
-    canvas.width = 600;
-    canvas.height = 600;
-    const ctx = canvas.getContext('2d');
-
-    // Фон
-    ctx.fillStyle = '#f0f0f0';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = '#764ba2';
-    ctx.lineWidth = 10;
-    ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
-
-    // Заголовок
-    ctx.fillStyle = '#333';
-    ctx.font = 'bold 30px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('🔮 Гороскоп на сегодня', canvas.width / 2, 80);
-
-    // Имя питомца — теперь общее (не индивидуальное)
-    ctx.font = 'bold 24px Arial';
-    ctx.fillStyle = '#764ba2';
-    ctx.fillText('Мой питомец', canvas.width / 2, 140);
-
-    // Текст гороскопа (с переносом строк)
-    ctx.font = '20px Arial';
-    ctx.fillStyle = '#333';
-    ctx.textAlign = 'left';
-    const words = horoscopeText.split(' ');
-    let line = '';
-    let y = 200;
-    const lineHeight = 30;
-    const maxWidth = 500;
-
-    for (let i = 0; i < words.length; i++) {
-        const testLine = line + words[i] + ' ';
-        const metrics = ctx.measureText(testLine);
-        if (metrics.width > maxWidth && i > 0) {
-            ctx.fillText(line, 50, y);
-            line = words[i] + ' ';
-            y += lineHeight;
-        } else {
-            line = testLine;
-        }
-    }
-    ctx.fillText(line, 50, y);
-
-    // Подпись с рекламой приложения (ссылка на мини-приложение)
-    ctx.font = '18px Arial';
-    ctx.fillStyle = '#999';
-    ctx.textAlign = 'center';
-    ctx.fillText('Мысли питомца • vk.com/app54466618', canvas.width / 2, canvas.height - 40);
-
-    // Конвертируем canvas в blob
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-
-    // Получаем URL для загрузки изображения на сервер ВК
-    let uploadUrl;
-    try {
-        const getUploadUrlResult = await bridge.send('VKWebAppGetWallUploadUrl');
-        uploadUrl = getUploadUrlResult.upload_url;
-    } catch (e) {
-        console.error(e);
-        alert('Не удалось получить ссылку для загрузки изображения.\n\nПопробуйте ещё раз или поделитесь вручную: скопируйте текст гороскопа.');
-        return;
-    }
-
-    // Загружаем изображение
-    const formData = new FormData();
-    formData.append('photo', blob, 'horoscope.png');
-
-    let uploadResponse;
-    try {
-        const response = await fetch(uploadUrl, {
-            method: 'POST',
-            body: formData
-        });
-        uploadResponse = await response.json();
-    } catch (e) {
-        console.error(e);
-        alert('Ошибка загрузки изображения');
-        return;
-    }
-
-    if (!uploadResponse.photo) {
-        alert('Не удалось загрузить изображение');
-        return;
-    }
-
-    // Текст для публикации (с ссылкой на приложение)
+    // Формируем текст для публикации (гороскоп + ссылка на приложение)
     const message = `🔮 Гороскоп для моего питомца на сегодня:\n\n${horoscopeText}\n\n#МыслиПитомца\n\n✨ Приложение: vk.com/app54466618`;
 
-    // Открываем окно публикации на стене
+    // Открываем окно публикации на стене без вложений
     try {
         await bridge.send('VKWebAppShowWallPostBox', {
-            message: message,
-            attachments: uploadResponse.photo
+            message: message
         });
     } catch (e) {
         console.error(e);
@@ -487,7 +397,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ИСПРАВЛЕНО: всегда открываем ссылку через window.open, без VK Bridge
     document.getElementById('openCommunityBtn')?.addEventListener('click', (e) => {
         e.preventDefault();
         window.open('https://vk.com/nash_pitomec', '_blank');
@@ -510,7 +419,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') handleChatSend();
     });
 
-    // ИСПРАВЛЕНО: убран touchend, оставлен только click с preventDefault
     const clearBtn = document.getElementById('clearChatBtn');
     if (clearBtn) {
         clearBtn.addEventListener('click', (e) => {
@@ -528,6 +436,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // НОВЫЙ ОБРАБОТЧИК ДЛЯ КНОПКИ "ПОДЕЛИТЬСЯ ГОРОСКОПОМ"
+    // Обработчик для кнопки "Поделиться гороскопом"
     document.getElementById('shareHoroscopeBtn')?.addEventListener('click', shareHoroscope);
 });
