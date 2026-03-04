@@ -70,17 +70,25 @@ function renderChatMessages() {
 
 function clearChatHistory() {
     let confirmed = false;
+
+    // Пытаемся использовать стандартный confirm, но учитываем особенности WebView
     try {
-        confirmed = confirm('Очистить всю историю сообщений?');
+        const result = confirm('Очистить всю историю сообщений?');
+        // В некоторых WebView confirm может вернуть undefined или небулево значение
+        confirmed = result === true;
     } catch (e) {
-        alert('Очистка временно недоступна. Попробуйте позже.');
+        console.warn('confirm не работает, используем fallback');
+        // Если confirm вызвал исключение, показываем alert и не очищаем
+        alert('Функция подтверждения недоступна. Очистка отменена.');
         return;
     }
 
-    if (confirmed) {
-        localStorage.removeItem(CHAT_HISTORY_KEY);
-        renderChatMessages();
-    }
+    // Если подтверждение не получено, выходим
+    if (!confirmed) return;
+
+    // Очищаем историю
+    localStorage.removeItem(CHAT_HISTORY_KEY);
+    renderChatMessages();
 }
 
 async function sendToMistral(userMessage) {
@@ -362,10 +370,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ИСПРАВЛЕНО: всегда открываем ссылку через window.open, без VK Bridge
+    // Кнопка перехода в сообщество: используем VK Bridge, если доступен
     document.getElementById('openCommunityBtn')?.addEventListener('click', (e) => {
         e.preventDefault();
-        window.open('https://vk.com/nash_pitomec', '_blank');
+        const url = 'https://vk.com/nash_pitomec';
+        // Пытаемся открыть через bridge, если он есть
+        if (bridge) {
+            bridge.send('VKWebAppOpenLink', { url }).catch(() => {
+                // Если bridge не сработал (например, нет метода), открываем через window.open
+                window.open(url, '_blank');
+            });
+        } else {
+            window.open(url, '_blank');
+        }
     });
 
     const tabsContainer = document.querySelector('.tabs');
@@ -385,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') handleChatSend();
     });
 
-    // ИСПРАВЛЕНО: убран touchend, оставлен только click с preventDefault
+    // Кнопка очистки чата: только click, без touchend (чтобы избежать дублей)
     const clearBtn = document.getElementById('clearChatBtn');
     if (clearBtn) {
         clearBtn.addEventListener('click', (e) => {
