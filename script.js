@@ -260,9 +260,30 @@ async function renderHoroscope() {
     loadingDiv.classList.add('hidden');
 }
 
-// ==================== УЛУЧШЕННАЯ ФУНКЦИЯ ШАРИНГА (ПОДДЕРЖКА FALLBACK) ====================
+// ==================== УПРОЩЁННЫЕ ФУНКЦИИ ДЛЯ ОТКРЫТИЯ ПОСТОВ (КАК В ПРИВЕТСТВИИ) ====================
+function openPostByUrl(url) {
+    console.log('openPostByUrl called with:', url);
+    // Открываем ссылку в новой вкладке — точно так же, как в приветствии
+    window.open(url, '_blank');
+}
+
+function openBulletinPost(section) {
+    console.log('openBulletinPost called with section:', section);
+    const urls = {
+        exhibition: 'https://vk.com/wall-229782692_20',
+        dating: 'https://vk.com/wall-229782692_540',
+        allinone: 'https://vk.com/wall-229782692_542'
+    };
+    const url = urls[section];
+    if (url) {
+        openPostByUrl(url);
+    } else {
+        alert('Ссылка на этот раздел пока не добавлена');
+    }
+}
+
+// ==================== УЛУЧШЕННАЯ ФУНКЦИЯ ШАРИНГА ====================
 function fallbackCopy(text) {
-    // Пытаемся скопировать в буфер обмена
     const textarea = document.createElement('textarea');
     textarea.value = text;
     document.body.appendChild(textarea);
@@ -291,7 +312,6 @@ async function shareHoroscope() {
     if (!horoscopeDiv) return;
 
     let horoscopeText = horoscopeDiv.innerText || horoscopeDiv.textContent;
-    // Проверяем, что гороскоп действительно загружен (не плейсхолдер)
     if (!horoscopeText || 
         horoscopeText.includes('Сначала укажи свой знак') || 
         horoscopeText.includes('Не удалось получить') ||
@@ -300,25 +320,20 @@ async function shareHoroscope() {
         return;
     }
 
-    // Формируем текст для публикации (гороскоп + ссылка на приложение)
     const fullMessage = `🔮 Гороскоп для моего питомца на сегодня:\n\n${horoscopeText}\n\n#МыслиПитомца\n\n✨ Приложение: vk.com/app54466618`;
 
-    // Пытаемся открыть нативное окно "Поделиться" ВКонтакте
     try {
-        // Проверяем, поддерживается ли метод VKWebAppShare
         if (bridge.supports && typeof bridge.supports === 'function' && bridge.supports('VKWebAppShare')) {
             await bridge.send('VKWebAppShare', {
                 link: 'https://vk.com/app54466618',
                 message: fullMessage
             });
-            return; // Успешно поделились
+            return;
         } else {
-            // Метод не поддерживается (например, запуск вне ВК) — копируем в буфер
             fallbackCopy(fullMessage);
         }
     } catch (e) {
         console.error('Ошибка VKWebAppShare:', e);
-        // Если произошла ошибка, тоже копируем в буфер
         fallbackCopy(fullMessage);
     }
 }
@@ -359,31 +374,33 @@ function switchTab(tabName) {
     const tabThoughts = document.getElementById('tabThoughts');
     const tabChat = document.getElementById('tabChat');
     const tabHoroscope = document.getElementById('tabHoroscope');
+    const tabBulletin = document.getElementById('tabBulletin');
+
     const thoughtsTab = document.getElementById('thoughtsTab');
     const chatTab = document.getElementById('chatTab');
     const horoscopeTab = document.getElementById('horoscopeTab');
+    const bulletinTab = document.getElementById('bulletinTab');
 
-    if (!tabThoughts || !tabChat || !tabHoroscope || !thoughtsTab || !chatTab || !horoscopeTab) return;
+    // Скрываем все
+    [tabThoughts, tabChat, tabHoroscope, tabBulletin].forEach(btn => btn?.classList.remove('active'));
+    [thoughtsTab, chatTab, horoscopeTab, bulletinTab].forEach(tab => tab?.classList.remove('active'));
 
-    tabThoughts.classList.remove('active');
-    tabChat.classList.remove('active');
-    tabHoroscope.classList.remove('active');
-    thoughtsTab.classList.remove('active');
-    chatTab.classList.remove('active');
-    horoscopeTab.classList.remove('active');
-
+    // Показываем нужный
     if (tabName === 'thoughts') {
-        tabThoughts.classList.add('active');
-        thoughtsTab.classList.add('active');
+        tabThoughts?.classList.add('active');
+        thoughtsTab?.classList.add('active');
     } else if (tabName === 'chat') {
-        tabChat.classList.add('active');
-        chatTab.classList.add('active');
+        tabChat?.classList.add('active');
+        chatTab?.classList.add('active');
         renderChatMessages();
         setTimeout(() => scrollChatToBottom(false), 100);
     } else if (tabName === 'horoscope') {
-        tabHoroscope.classList.add('active');
-        horoscopeTab.classList.add('active');
+        tabHoroscope?.classList.add('active');
+        horoscopeTab?.classList.add('active');
         renderHoroscope();
+    } else if (tabName === 'bulletin') {
+        tabBulletin?.classList.add('active');
+        bulletinTab?.classList.add('active');
     }
 }
 
@@ -439,6 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (target.id === 'tabThoughts') switchTab('thoughts');
             else if (target.id === 'tabChat') switchTab('chat');
             else if (target.id === 'tabHoroscope') switchTab('horoscope');
+            else if (target.id === 'tabBulletin') switchTab('bulletin');
         });
     }
 
@@ -464,6 +482,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Обработчик для кнопки "Поделиться гороскопом"
     document.getElementById('shareHoroscopeBtn')?.addEventListener('click', shareHoroscope);
+
+    // Обработчики кнопок объявлений
+    document.querySelectorAll('.bulletin-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const section = e.currentTarget.dataset.section;
+            openBulletinPost(section);
+        });
+    });
 });

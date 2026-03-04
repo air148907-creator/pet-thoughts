@@ -403,3 +403,23 @@ body {
     font-size: 14px;
     font-style: italic;
 }
+
+/* Стили для кнопок объявлений */
+.bulletin-btn {
+    background: #4a76a8;
+    font-size: 16px;
+    padding: 14px 10px;
+    border-radius: 25px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: transform 0.1s, background 0.2s;
+    touch-action: manipulation;
+    margin-top: 0;
+}
+
+.bulletin-btn:hover {
+    background: #3b5e8a;
+}
+
+.bulletin-btn:active {
+    transform: scale(0.97);
+}

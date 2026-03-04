@@ -67,6 +67,7 @@
                 <button class="tab-btn active" id="tabThoughts">💭 Приветствие</button>
                 <button class="tab-btn" id="tabChat">💬 Чат с Мафией</button>
                 <button class="tab-btn" id="tabHoroscope">🔮 Гороскоп</button>
+                <button class="tab-btn" id="tabBulletin">📋 Объявления</button>
             </div>
 
             <!-- Вкладка "Приветствие" -->
@@ -105,8 +106,22 @@
                         <p>Кот Тимофей составляет прогноз...</p>
                     </div>
                     <div id="horoscopeTimer" class="horoscope-timer" style="text-align: center; margin-top: 15px; color: #666; font-size: 14px;"></div>
-                    <!-- Кнопка для шаринга -->
                     <button class="vk-button" id="shareHoroscopeBtn" style="margin-top: 15px; background: #4CAF50;">📤 Поделиться гороскопом</button>
+                </div>
+            </div>
+
+            <!-- Вкладка объявлений (3 кнопки) -->
+            <div class="tab-content" id="bulletinTab">
+                <div style="padding: 20px;">
+                    <h3 style="margin-bottom: 20px; text-align: center;">📢 Полезные посты сообщества</h3>
+                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                        <button class="vk-button bulletin-btn" data-section="dating">💕 Знакомства для ваших питомцев 🐶🐱</button>
+                        <button class="vk-button bulletin-btn" data-section="exhibition">🖼️ ФОТО Выставка</button>
+                        <button class="vk-button bulletin-btn" data-section="allinone">🔍 Пропал / Найден / Ищет хозяина / В добрые руки</button>
+                    </div>
+                    <p style="margin-top: 20px; color: #666; font-size: 13px; text-align: center;">
+                        Нажмите на кнопку, чтобы открыть пост в сообществе.
+                    </p>
                 </div>
             </div>
         </div>
