@@ -110,18 +110,25 @@
                 </div>
             </div>
 
-            <!-- Вкладка объявлений (3 кнопки) -->
+            <!-- Вкладка объявлений (обновлённый дизайн) -->
             <div class="tab-content" id="bulletinTab">
-                <div style="padding: 20px;">
-                    <h3 style="margin-bottom: 20px; text-align: center;">📢 Полезные посты сообщества</h3>
-                    <div style="display: flex; flex-direction: column; gap: 15px;">
-                        <button class="vk-button bulletin-btn" data-section="dating">💕 Знакомства для ваших питомцев 🐶🐱</button>
-                        <button class="vk-button bulletin-btn" data-section="exhibition">🖼️ ФОТО Выставка</button>
-                        <button class="vk-button bulletin-btn" data-section="allinone">🔍 Пропал / Найден / Ищет хозяина / В добрые руки</button>
+                <div class="bulletin-container">
+                    <h3 class="bulletin-title">📢 Полезные посты</h3>
+                    <div class="bulletin-buttons">
+                        <button class="bulletin-item" data-section="dating">
+                            <span class="bulletin-icon">💕</span>
+                            <span class="bulletin-text">Знакомства для питомцев</span>
+                        </button>
+                        <button class="bulletin-item" data-section="exhibition">
+                            <span class="bulletin-icon">🖼️</span>
+                            <span class="bulletin-text">ФОТО Выставка</span>
+                        </button>
+                        <button class="bulletin-item" data-section="allinone">
+                            <span class="bulletin-icon">🔍</span>
+                            <span class="bulletin-text">Пропал / Найден / В добрые руки</span>
+                        </button>
                     </div>
-                    <p style="margin-top: 20px; color: #666; font-size: 13px; text-align: center;">
-                        Нажмите на кнопку, чтобы открыть пост в сообществе.
-                    </p>
+                    <p class="bulletin-note">Нажмите, чтобы открыть пост в сообществе</p>
                 </div>
             </div>
         </div>

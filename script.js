@@ -260,11 +260,10 @@ async function renderHoroscope() {
     loadingDiv.classList.add('hidden');
 }
 
-// ==================== УПРОЩЁННЫЕ ФУНКЦИИ ДЛЯ ОТКРЫТИЯ ПОСТОВ (КАК В ПРИВЕТСТВИИ) ====================
+// ==================== ФУНКЦИИ ДЛЯ ОТКРЫТИЯ ПОСТОВ ====================
 function openPostByUrl(url) {
     console.log('openPostByUrl called with:', url);
-    // Открываем ссылку в новой вкладке — точно так же, как в приветствии
-    window.open(url, '_blank');
+    window.open(url, '_blank'); // точно как в приветствии
 }
 
 function openBulletinPost(section) {
@@ -282,7 +281,7 @@ function openBulletinPost(section) {
     }
 }
 
-// ==================== УЛУЧШЕННАЯ ФУНКЦИЯ ШАРИНГА ====================
+// ==================== ФУНКЦИЯ ШАРИНГА ====================
 function fallbackCopy(text) {
     const textarea = document.createElement('textarea');
     textarea.value = text;
@@ -381,11 +380,9 @@ function switchTab(tabName) {
     const horoscopeTab = document.getElementById('horoscopeTab');
     const bulletinTab = document.getElementById('bulletinTab');
 
-    // Скрываем все
     [tabThoughts, tabChat, tabHoroscope, tabBulletin].forEach(btn => btn?.classList.remove('active'));
     [thoughtsTab, chatTab, horoscopeTab, bulletinTab].forEach(tab => tab?.classList.remove('active'));
 
-    // Показываем нужный
     if (tabName === 'thoughts') {
         tabThoughts?.classList.add('active');
         thoughtsTab?.classList.add('active');
@@ -484,8 +481,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('shareHoroscopeBtn')?.addEventListener('click', shareHoroscope);
 
-    // Обработчики кнопок объявлений
-    document.querySelectorAll('.bulletin-btn').forEach(btn => {
+    // Обновлённый селектор для кнопок объявлений
+    document.querySelectorAll('.bulletin-item').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const section = e.currentTarget.dataset.section;
             openBulletinPost(section);
