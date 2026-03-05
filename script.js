@@ -3,11 +3,11 @@ const bridge = window.vkBridge;
 bridge.send('VKWebAppInit').catch(() => {});
 
 // ==================== КОНСТАНТЫ ====================
-const APP_ID = 54466618;
+const VK_APP_ID = 54466618;          // Ваш ID приложения
+const API_BASE_URL = 'http://localhost:3000'; // замените на URL вашего бэкенда
 const STORAGE_KEY = 'petProfile';
 const CHAT_HISTORY_KEY = 'chatHistory';
 
-// Кэш для системного промпта чата
 let cachedSystemPrompt = '';
 
 // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
@@ -16,7 +16,8 @@ function getTodayDateString() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function saveProfile(name, type, zodiacSign) {
+// Локальное сохранение (дублирует серверное, для быстрого доступа)
+function saveProfileLocally(name, type, zodiacSign) {
     const profile = { petName: name, petType: type, zodiacSign: zodiacSign };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
     cachedSystemPrompt = '';
@@ -27,7 +28,25 @@ function loadProfile() {
     return profile ? JSON.parse(profile) : null;
 }
 
-// ==================== ФУНКЦИИ ЧАТА ====================
+// ==================== РАБОТА С ТОКЕНОМ VK ====================
+async function ensureAccessToken() {
+    return new Promise((resolve, reject) => {
+        const token = localStorage.getItem('vk_access_token');
+        if (token) {
+            resolve(token);
+        } else {
+            bridge.send('VKWebAppGetAuthToken', {
+                app_id: VK_APP_ID,
+                scope: 'friends'
+            }).then(data => {
+                localStorage.setItem('vk_access_token', data.access_token);
+                resolve(data.access_token);
+            }).catch(reject);
+        }
+    });
+}
+
+// ==================== ФУНКЦИИ ЧАТА (без изменений) ====================
 function loadChatHistory() {
     const history = localStorage.getItem(CHAT_HISTORY_KEY);
     return history ? JSON.parse(history) : [];
@@ -148,7 +167,7 @@ async function handleChatSend() {
     scrollChatToBottom(true);
 }
 
-// ==================== ФУНКЦИИ ДЛЯ ГОРОСКОПА ====================
+// ==================== ФУНКЦИИ ДЛЯ ГОРОСКОПА (без изменений) ====================
 function getTimeUntilMidnight() {
     const now = new Date();
     const midnight = new Date(now);
@@ -262,23 +281,18 @@ async function renderHoroscope() {
 
 // ==================== ФУНКЦИИ ДЛЯ ОТКРЫТИЯ ПОСТОВ ====================
 function openPostByUrl(url) {
-    console.log('openPostByUrl called with:', url);
-    window.open(url, '_blank'); // точно как в приветствии
+    window.open(url, '_blank');
 }
 
 function openBulletinPost(section) {
-    console.log('openBulletinPost called with section:', section);
     const urls = {
         exhibition: 'https://vk.com/wall-229782692_20',
         dating: 'https://vk.com/wall-229782692_540',
         allinone: 'https://vk.com/wall-229782692_542'
     };
     const url = urls[section];
-    if (url) {
-        openPostByUrl(url);
-    } else {
-        alert('Ссылка на этот раздел пока не добавлена');
-    }
+    if (url) openPostByUrl(url);
+    else alert('Ссылка на этот раздел пока не добавлена');
 }
 
 // ==================== ФУНКЦИЯ ШАРИНГА ====================
@@ -337,33 +351,246 @@ async function shareHoroscope() {
     }
 }
 
+// ==================== НОВЫЕ ФУНКЦИИ ДЛЯ ЛЕНТЫ, ЛАЙКОВ И РЕЙТИНГА ====================
+
+// Рендер карточки питомца
+function renderPetCard(pet, withOwnerLink = true) {
+    const card = document.createElement('div');
+    card.className = 'pet-card';
+    card.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 15px; background: #f5f5f5; border-radius: 20px; padding: 15px; margin-bottom: 10px;">
+            <div style="width: 60px; height: 60px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center; font-size: 30px;">
+                ${pet.photo_url ? `<img src="${pet.photo_url}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` : '🐾'}
+            </div>
+            <div style="flex:1;">
+                <div style="font-weight:bold; font-size:18px;">${pet.name}</div>
+                <div style="color:#666;">${pet.type} • ${pet.zodiac_sign}</div>
+                ${withOwnerLink ? `<div style="font-size:14px;"><a href="https://vk.com/id${pet.vk_id}" target="_blank">Владелец</a></div>` : ''}
+            </div>
+            <button class="like-btn" data-pet-id="${pet.id}" style="background: none; border: none; font-size: 20px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                <span>${pet.user_liked ? '❤️' : '🤍'}</span>
+                <span>${pet.likes_count || 0}</span>
+            </button>
+        </div>
+    `;
+    card.querySelector('.like-btn').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await toggleLike(pet.id);
+    });
+    return card;
+}
+
+// Поставить/убрать лайк
+async function toggleLike(petId) {
+    const token = await ensureAccessToken();
+    const userInfo = await bridge.send('VKWebAppGetUserInfo');
+    const vkId = userInfo.id;
+
+    const response = await fetch(`${API_BASE_URL}/api/like/${petId}`, {
+        method: 'POST',
+        headers: {
+            'X-VK-ID': vkId,
+            'X-Access-Token': token
+        }
+    });
+    const result = await response.json();
+    // Обновляем текущую вкладку
+    const activeTab = document.querySelector('.tab-btn.active')?.id;
+    if (activeTab === 'tabFriendsFeed') loadFriendsFeed(true);
+    else if (activeTab === 'tabRating') {
+        loadTop24h();
+        loadRating(true);
+    }
+}
+
+// Пагинация для ленты друзей
+let friendsOffset = 0;
+const FRIENDS_LIMIT = 10;
+
+async function loadFriendsFeed(reset = false) {
+    if (reset) friendsOffset = 0;
+
+    const container = document.getElementById('friendsFeedContainer');
+    if (!container) return;
+
+    try {
+        const token = await ensureAccessToken();
+        const userInfo = await bridge.send('VKWebAppGetUserInfo');
+        const vkId = userInfo.id;
+
+        const url = `${API_BASE_URL}/api/feed/friends?limit=${FRIENDS_LIMIT}&offset=${friendsOffset}`;
+        const response = await fetch(url, {
+            headers: {
+                'X-VK-ID': vkId,
+                'X-Access-Token': token
+            }
+        });
+        const data = await response.json();
+
+        if (reset) container.innerHTML = '';
+
+        data.pets.forEach(pet => {
+            container.appendChild(renderPetCard(pet, true));
+        });
+
+        friendsOffset += data.pets.length;
+        document.getElementById('loadMoreFriends').style.display = data.pets.length < FRIENDS_LIMIT ? 'none' : 'block';
+    } catch (e) {
+        console.error('Ошибка загрузки ленты', e);
+    }
+}
+
+// Пагинация для рейтинга
+let ratingOffset = 0;
+const RATING_LIMIT = 10;
+
+async function loadRating(reset = false) {
+    if (reset) ratingOffset = 0;
+
+    const container = document.getElementById('ratingContainer');
+    if (!container) return;
+
+    try {
+        const token = await ensureAccessToken();
+        const userInfo = await bridge.send('VKWebAppGetUserInfo');
+        const vkId = userInfo.id;
+
+        const url = `${API_BASE_URL}/api/rating?limit=${RATING_LIMIT}&offset=${ratingOffset}`;
+        const response = await fetch(url, {
+            headers: {
+                'X-VK-ID': vkId,
+                'X-Access-Token': token
+            }
+        });
+        const pets = await response.json();
+
+        if (reset) container.innerHTML = '';
+
+        pets.forEach(pet => {
+            // Для рейтинга показываем владельца, но user_liked не определён – ставим false
+            container.appendChild(renderPetCard({ ...pet, user_liked: false }, true));
+        });
+
+        ratingOffset += pets.length;
+        document.getElementById('loadMoreRating').style.display = pets.length < RATING_LIMIT ? 'none' : 'block';
+    } catch (e) {
+        console.error('Ошибка загрузки рейтинга', e);
+    }
+}
+
+async function loadTop24h() {
+    const container = document.getElementById('top24hContainer');
+    if (!container) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/top24h`);
+        const pets = await response.json();
+        container.innerHTML = '';
+        pets.forEach(pet => {
+            container.appendChild(renderPetCard({ ...pet, user_liked: false }, true));
+        });
+    } catch (e) {
+        console.error('Ошибка загрузки топ-24', e);
+    }
+}
+
+// ==================== ОБНОВЛЕНИЕ ПРОФИЛЯ НА СЕРВЕРЕ ====================
+
+// Сохраняет профиль и на сервере, и локально
+async function saveProfileOnServer(name, type, zodiacSign) {
+    const token = await ensureAccessToken();
+    const userInfo = await bridge.send('VKWebAppGetUserInfo');
+    const vkId = userInfo.id;
+
+    const response = await fetch(`${API_BASE_URL}/api/profile`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-VK-ID': vkId,
+            'X-Access-Token': token
+        },
+        body: JSON.stringify({
+            name,
+            type,
+            zodiac_sign: zodiacSign,
+            photo_url: '' // пока без фото
+        })
+    });
+
+    if (!response.ok) throw new Error('Ошибка сохранения на сервере');
+    // Дублируем локально
+    saveProfileLocally(name, type, zodiacSign);
+}
+
+// Загружает профиль с сервера и обновляет локальное хранилище
+async function loadProfileFromServer() {
+    const token = await ensureAccessToken();
+    const userInfo = await bridge.send('VKWebAppGetUserInfo');
+    const vkId = userInfo.id;
+
+    const response = await fetch(`${API_BASE_URL}/api/profile`, {
+        headers: {
+            'X-VK-ID': vkId,
+            'X-Access-Token': token
+        }
+    });
+    const pet = await response.json();
+    if (pet && pet.name) {
+        saveProfileLocally(pet.name, pet.type, pet.zodiac_sign);
+        return pet;
+    }
+    return null;
+}
+
 // ==================== ОБНОВЛЕНИЕ ИНТЕРФЕЙСА ====================
-function updateUIBasedOnProfile() {
-    const profile = loadProfile();
+async function updateUIBasedOnProfile() {
     const loadingScreen = document.getElementById('loadingScreen');
     const profileScreen = document.getElementById('profileScreen');
     const mainInterface = document.getElementById('mainInterface');
     const petInfoDisplay = document.getElementById('petInfoDisplay');
 
-    if (!profile) {
-        loadingScreen.classList.add('hidden');
-        profileScreen.classList.remove('hidden');
-        mainInterface.classList.add('hidden');
-        document.getElementById('petName').value = '';
-        document.getElementById('petType').value = 'Кот';
-        document.getElementById('zodiacSign').value = '';
-        document.getElementById('profileTitle').textContent = '🫵 Кто тут у нас?';
-    } else {
-        loadingScreen.classList.add('hidden');
-        profileScreen.classList.add('hidden');
-        mainInterface.classList.remove('hidden');
-
-        petInfoDisplay.textContent = `${profile.petType} ${profile.petName}`;
-
-        renderChatMessages();
-
-        if (document.getElementById('horoscopeTab').classList.contains('active')) {
-            renderHoroscope();
+    try {
+        const pet = await loadProfileFromServer();
+        if (pet) {
+            loadingScreen.classList.add('hidden');
+            profileScreen.classList.add('hidden');
+            mainInterface.classList.remove('hidden');
+            petInfoDisplay.textContent = `${pet.type} ${pet.name}`;
+            renderChatMessages();
+            if (document.getElementById('horoscopeTab').classList.contains('active')) {
+                renderHoroscope();
+            }
+        } else {
+            // Нет профиля на сервере – показываем экран создания
+            loadingScreen.classList.add('hidden');
+            profileScreen.classList.remove('hidden');
+            mainInterface.classList.add('hidden');
+        }
+    } catch (e) {
+        console.error('Ошибка загрузки профиля', e);
+        // Пробуем локальный профиль как запасной
+        const localProfile = loadProfile();
+        if (localProfile) {
+            // Пытаемся отправить локальный на сервер
+            try {
+                await saveProfileOnServer(localProfile.petName, localProfile.petType, localProfile.zodiacSign);
+                // Повторяем вызов
+                updateUIBasedOnProfile();
+            } catch (err) {
+                // Если не получилось, всё равно показываем основной интерфейс с локальными данными
+                loadingScreen.classList.add('hidden');
+                profileScreen.classList.add('hidden');
+                mainInterface.classList.remove('hidden');
+                petInfoDisplay.textContent = `${localProfile.petType} ${localProfile.petName}`;
+                renderChatMessages();
+                if (document.getElementById('horoscopeTab').classList.contains('active')) {
+                    renderHoroscope();
+                }
+            }
+        } else {
+            loadingScreen.classList.add('hidden');
+            profileScreen.classList.remove('hidden');
+            mainInterface.classList.add('hidden');
         }
     }
 }
@@ -374,14 +601,18 @@ function switchTab(tabName) {
     const tabChat = document.getElementById('tabChat');
     const tabHoroscope = document.getElementById('tabHoroscope');
     const tabBulletin = document.getElementById('tabBulletin');
+    const tabFriendsFeed = document.getElementById('tabFriendsFeed');
+    const tabRatingBtn = document.getElementById('tabRating');
 
     const thoughtsTab = document.getElementById('thoughtsTab');
     const chatTab = document.getElementById('chatTab');
     const horoscopeTab = document.getElementById('horoscopeTab');
     const bulletinTab = document.getElementById('bulletinTab');
+    const friendsFeedTab = document.getElementById('friendsFeedTab');
+    const ratingTab = document.getElementById('ratingTab');
 
-    [tabThoughts, tabChat, tabHoroscope, tabBulletin].forEach(btn => btn?.classList.remove('active'));
-    [thoughtsTab, chatTab, horoscopeTab, bulletinTab].forEach(tab => tab?.classList.remove('active'));
+    [tabThoughts, tabChat, tabHoroscope, tabBulletin, tabFriendsFeed, tabRatingBtn].forEach(btn => btn?.classList.remove('active'));
+    [thoughtsTab, chatTab, horoscopeTab, bulletinTab, friendsFeedTab, ratingTab].forEach(tab => tab?.classList.remove('active'));
 
     if (tabName === 'thoughts') {
         tabThoughts?.classList.add('active');
@@ -398,6 +629,15 @@ function switchTab(tabName) {
     } else if (tabName === 'bulletin') {
         tabBulletin?.classList.add('active');
         bulletinTab?.classList.add('active');
+    } else if (tabName === 'friends') {
+        tabFriendsFeed?.classList.add('active');
+        friendsFeedTab?.classList.add('active');
+        loadFriendsFeed(true);
+    } else if (tabName === 'rating') {
+        tabRatingBtn?.classList.add('active');
+        ratingTab?.classList.add('active');
+        loadTop24h();
+        loadRating(true);
     }
 }
 
@@ -405,23 +645,23 @@ function switchTab(tabName) {
 document.addEventListener('DOMContentLoaded', () => {
     updateUIBasedOnProfile();
 
-    document.getElementById('saveProfileBtn')?.addEventListener('click', () => {
+    // Сохранение профиля (теперь на сервер)
+    document.getElementById('saveProfileBtn')?.addEventListener('click', async () => {
         const petName = document.getElementById('petName')?.value.trim();
         const petType = document.getElementById('petType')?.value;
         const zodiacSign = document.getElementById('zodiacSign')?.value;
 
-        if (!petName) {
-            alert('Введите имя питомца');
-            return;
-        }
-        if (!zodiacSign) {
-            alert('Выберите свой знак зодиака');
-            return;
-        }
+        if (!petName) { alert('Введите имя питомца'); return; }
+        if (!zodiacSign) { alert('Выберите свой знак зодиака'); return; }
 
-        saveProfile(petName, petType, zodiacSign);
-        updateUIBasedOnProfile();
-        switchTab('thoughts');
+        try {
+            await saveProfileOnServer(petName, petType, zodiacSign);
+            updateUIBasedOnProfile();
+            switchTab('thoughts');
+        } catch (e) {
+            alert('Не удалось сохранить профиль. Попробуйте позже.');
+            console.error(e);
+        }
     });
 
     document.getElementById('editProfileBtn')?.addEventListener('click', () => {
@@ -444,6 +684,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.open('https://vk.com/nash_pitomec', '_blank');
     });
 
+    // Переключение вкладок через делегирование
     const tabsContainer = document.querySelector('.tabs');
     if (tabsContainer) {
         tabsContainer.addEventListener('click', (e) => {
@@ -454,6 +695,8 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (target.id === 'tabChat') switchTab('chat');
             else if (target.id === 'tabHoroscope') switchTab('horoscope');
             else if (target.id === 'tabBulletin') switchTab('bulletin');
+            else if (target.id === 'tabFriendsFeed') switchTab('friends');
+            else if (target.id === 'tabRating') switchTab('rating');
         });
     }
 
@@ -481,11 +724,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('shareHoroscopeBtn')?.addEventListener('click', shareHoroscope);
 
-    // Обновлённый селектор для кнопок объявлений
+    // Кнопки объявлений
     document.querySelectorAll('.bulletin-item').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const section = e.currentTarget.dataset.section;
             openBulletinPost(section);
         });
     });
+
+    // Кнопки "Загрузить ещё"
+    document.getElementById('loadMoreFriends')?.addEventListener('click', () => loadFriendsFeed());
+    document.getElementById('loadMoreRating')?.addEventListener('click', () => loadRating());
 });

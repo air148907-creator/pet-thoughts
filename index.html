@@ -68,6 +68,9 @@
                 <button class="tab-btn" id="tabChat">💬 Чат с Мафией</button>
                 <button class="tab-btn" id="tabHoroscope">🔮 Гороскоп</button>
                 <button class="tab-btn" id="tabBulletin">📋 Объявления</button>
+                <!-- НОВЫЕ КНОПКИ -->
+                <button class="tab-btn" id="tabFriendsFeed">👥 Лента друзей</button>
+                <button class="tab-btn" id="tabRating">🏆 Рейтинг</button>
             </div>
 
             <!-- Вкладка "Приветствие" -->
@@ -98,9 +101,7 @@
             <!-- Вкладка гороскопа -->
             <div class="tab-content" id="horoscopeTab">
                 <div class="horoscope-container" style="padding: 15px;">
-                    <div id="horoscopeText" class="horoscope-text" style="font-size: 18px; line-height: 1.5; background: #f0f0f0; border-radius: 20px; padding: 25px; min-height: 200px;">
-                        <!-- Текст гороскопа -->
-                    </div>
+                    <div id="horoscopeText" class="horoscope-text" style="font-size: 18px; line-height: 1.5; background: #f0f0f0; border-radius: 20px; padding: 25px; min-height: 200px;"></div>
                     <div id="horoscopeLoading" class="hidden" style="text-align: center; margin-top: 20px;">
                         <div class="loader" style="width: 30px; height: 30px;"></div>
                         <p>Кот Тимофей составляет прогноз...</p>
@@ -110,25 +111,38 @@
                 </div>
             </div>
 
-            <!-- Вкладка объявлений (обновлённый дизайн) -->
+            <!-- Вкладка объявлений -->
             <div class="tab-content" id="bulletinTab">
                 <div class="bulletin-container">
                     <h3 class="bulletin-title">📢 Полезные посты</h3>
                     <div class="bulletin-buttons">
-                        <button class="bulletin-item" data-section="dating">
-                            <span class="bulletin-icon">💕</span>
-                            <span class="bulletin-text">Знакомства для питомцев</span>
-                        </button>
-                        <button class="bulletin-item" data-section="exhibition">
-                            <span class="bulletin-icon">🖼️</span>
-                            <span class="bulletin-text">ФОТО Выставка</span>
-                        </button>
-                        <button class="bulletin-item" data-section="allinone">
-                            <span class="bulletin-icon">🔍</span>
-                            <span class="bulletin-text">Пропал / Найден / В добрые руки</span>
-                        </button>
+                        <button class="bulletin-item" data-section="dating"><span class="bulletin-icon">💕</span><span class="bulletin-text">Знакомства для питомцев</span></button>
+                        <button class="bulletin-item" data-section="exhibition"><span class="bulletin-icon">🖼️</span><span class="bulletin-text">ФОТО Выставка</span></button>
+                        <button class="bulletin-item" data-section="allinone"><span class="bulletin-icon">🔍</span><span class="bulletin-text">Пропал / Найден / В добрые руки</span></button>
                     </div>
                     <p class="bulletin-note">Нажмите, чтобы открыть пост в сообществе</p>
+                </div>
+            </div>
+
+            <!-- НОВАЯ ВКЛАДКА: Лента друзей -->
+            <div class="tab-content" id="friendsFeedTab">
+                <div id="friendsFeedContainer" style="padding: 15px;"></div>
+                <div style="text-align: center; padding: 10px;">
+                    <button id="loadMoreFriends" class="vk-button" style="background: #666;">Загрузить ещё</button>
+                </div>
+            </div>
+
+            <!-- НОВАЯ ВКЛАДКА: Рейтинг и топ-3 -->
+            <div class="tab-content" id="ratingTab">
+                <div style="padding: 15px;">
+                    <h3 style="margin-bottom: 15px;">🏆 Топ-3 за последние 24 часа</h3>
+                    <div id="top24hContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px;"></div>
+                    
+                    <h3 style="margin-bottom: 15px;">📊 Общий рейтинг питомцев</h3>
+                    <div id="ratingContainer" style="display: flex; flex-direction: column; gap: 10px;"></div>
+                    <div style="text-align: center; padding: 10px;">
+                        <button id="loadMoreRating" class="vk-button" style="background: #666;">Загрузить ещё</button>
+                    </div>
                 </div>
             </div>
         </div>

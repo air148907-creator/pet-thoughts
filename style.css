@@ -404,7 +404,7 @@ body {
     font-style: italic;
 }
 
-/* ===== НОВЫЕ СТИЛИ ДЛЯ ВКЛАДКИ ОБЪЯВЛЕНИЙ ===== */
+/* ===== СТИЛИ ДЛЯ ВКЛАДКИ ОБЪЯВЛЕНИЙ ===== */
 .bulletin-container {
     padding: 16px;
 }
@@ -462,4 +462,30 @@ body {
     color: #999;
     font-size: 13px;
     text-align: center;
+}
+
+/* ===== НОВЫЕ СТИЛИ ДЛЯ КАРТОЧЕК ПИТОМЦЕВ И ЛАЙКОВ ===== */
+.pet-card {
+    margin-bottom: 10px;
+}
+.pet-card button {
+    touch-action: manipulation;
+}
+.like-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    transition: background 0.2s;
+}
+.like-btn:hover {
+    background: rgba(0,0,0,0.05);
+}
+.like-btn:active {
+    transform: scale(0.95);
 }
